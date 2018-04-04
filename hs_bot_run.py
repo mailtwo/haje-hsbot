@@ -16,6 +16,10 @@ def main():
 
     db = DBConnector()
     db.load('card_info.pd', 'alias.pd')
+    # text = '10코 주문 전사'
+    # stat_query, text_query = db.parse_query_text(text)
+    # print('input: ' + text)
+    # print('stats: ' + str(stat_query) + ', text: ' + text_query)
 
     sc = SlackClient(slack_token)
 
@@ -45,25 +49,17 @@ def main():
                             ret_text.append('<%s|%s>' % (card.iloc[idx, card_db_col.index('detail_url')],
                                                         '[[' + card.iloc[idx, card_db_col.index('name')] + ']]'))
                         ret_text = ', '.join(ret_text)
+
                     result = sc.api_call(
-                        "chat.postMessage",
-                        channel="#bottest",
+                        'chat.postMessage',
+                        channel=channel_id,
                         username='하스봇',
                         icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
                         text=ret_text
                     )
                     print(result)
     else:
-        print ("Connection Failed")
-
-    # result = sc.api_call(
-    #     "chat.postMessage",
-    #     channel="#bottest",
-    #     username='하스봇',
-    #     icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
-    #     text="봇 접속 테스트"
-    # )
-    # print(result)
+        print ('Connection Failed')
 
 if __name__ == '__main__':
     main()
