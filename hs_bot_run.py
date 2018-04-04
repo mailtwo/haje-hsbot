@@ -16,15 +16,23 @@ def main():
 
     db = DBConnector()
     db.load('card_info.pd', 'alias.pd')
-    # text = '10코 주문 전사'
-    # stat_query, text_query = db.parse_query_text(text)
-    # print('input: ' + text)
-    # print('stats: ' + str(stat_query) + ', text: ' + text_query)
+    # user_query = '3코 천상의 보호막 도발'
+    # stat_query, text_query = db.parse_query_text(user_query)
+    # print (stat_query, text_query)
+    # inner_result = None
+    # if len(stat_query.keys()) > 0:
+    #     inner_result = db.query_stat(stat_query)
+    #     print(inner_result.shape[0])
+    # card = db.query_text(inner_result, text_query)
+    # print(card.shape[0])
+    # for idx, row in card.iterrows():
+    #     print (row['name'])
 
     sc = SlackClient(slack_token)
 
     if sc.rtm_connect():
         sc.server.websocket.sock.setblocking(1)
+        print ('Start running...')
         while sc.server.connected is True:
             msg_list = sc.rtm_read()
             for msg_info in msg_list:
@@ -35,29 +43,39 @@ def main():
                 if 'user' not in msg_info or msg_info['user'][0] != 'U':
                     continue
                 text = msg_info['text']
-                if text[:2] == '[[' and text[-2:] == ']]':
-                    card = db.query_info({'name': text[2:-2]})
-                    ret_text = ''
-                    if card.empty:
-                        ret_text = '%s 에 해당하는 카드를 찾을 수 없습니다.' % (text, )
-                    elif card.shape[0] == 1:
-                        cur_data = card.iloc[0]
-                        ret_text = '<%s|%s>\n%s'% (cur_data['detail_url'], '[[' + cur_data['name'] + ']]', cur_data['img_url'])
-                    else:
-                        ret_text = []
-                        for idx in range(card.shape[0]):
-                            ret_text.append('<%s|%s>' % (card.iloc[idx, card_db_col.index('detail_url')],
-                                                        '[[' + card.iloc[idx, card_db_col.index('name')] + ']]'))
-                        ret_text = ', '.join(ret_text)
 
-                    result = sc.api_call(
-                        'chat.postMessage',
-                        channel=channel_id,
-                        username='하스봇',
-                        icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
-                        text=ret_text
-                    )
-                    print(result)
+                if not(text[:2] == '||' and text[-2:] == ']]'):
+                    continue
+
+                user_query = text[2:-2]
+                stat_query, text_query = db.parse_query_text(user_query)
+                inner_result = None
+                if len(stat_query.keys()) > 0:
+                    inner_result = db.query_stat(stat_query)
+                card = db.query_text(inner_result, text_query)
+                ret_text = ''
+                if card.empty:
+                    ret_text = '%s 에 해당하는 카드를 찾을 수 없습니다.' % (text, )
+                elif card.shape[0] == 1:
+                    cur_data = card.iloc[0]
+                    ret_text = '<%s|%s>\n%s'% (cur_data['detail_url'], '[' + cur_data['name'] + ']', cur_data['img_url'])
+                elif card.shape[0] <= 5:
+                    ret_text = []
+                    for idx in range(card.shape[0]):
+                        ret_text.append('<%s|%s>' % (card.iloc[idx]['detail_url'],
+                                                    '[' + card.iloc[idx]['name'] + ']'))
+                    ret_text = ', '.join(ret_text)
+                else:
+                    ret_text = '%d 건의 결과가 검색되었습니다.' % (card.shape[0], )
+
+                result = sc.api_call(
+                    'chat.postMessage',
+                    channel=channel_id,
+                    username='하스봇',
+                    icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
+                    text=ret_text
+                )
+                print(result)
     else:
         print ('Connection Failed')
 

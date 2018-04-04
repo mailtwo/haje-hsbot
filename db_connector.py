@@ -1,6 +1,11 @@
 import os
 import pandas as pd
 
+card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
+hs_keywords = ['은신', '도발', '돌진', '질풍', '빙결', '침묵', '주문 공격력', '차단', '천상의 보호막', '독성',
+               '전투의 함성', '죽음의 메아리', '면역', '선택', '연계', '과부화', '비밀', '예비 부품', '격려',
+               '창시합', '발견', '비취 골렘', '적응', '퀘스트', '보상', '생명력 흡수', '소집', '개전', '속공', '잔상']
+
 class DBConnector(object):
     def __init__(self):
         self.card_db = None
@@ -14,9 +19,12 @@ class DBConnector(object):
                             '법사': '마법사',
                             '성기사': '성기사',
                             '사제': '사제',
+                            '안두인': '사제',
                             '도적': '도적',
                             '주술사': '주술사',
+                            '술사': '주술사',
                             '흑마법사': '흑마법사',
+                            '흑마': '흑마법사',
                             '전사': '전사',}
         self.expansion_alias = {}
         self.type_alias = {'주문': '주문',
@@ -28,6 +36,7 @@ class DBConnector(object):
                              '희귀': '희귀',
                              '전설': '전설',
                              '영웅': '영웅',}
+        self.regular_expansion = ['코볼트', '얼어붙은 왕좌', '운고로', '가젯잔', '카라잔', '오리지널', '기본']
 
     # load DataFrame type database from the path
     def load(self, card_db_path, alias_db_path):
@@ -37,13 +46,73 @@ class DBConnector(object):
         self.alias_db = pd.read_hdf(alias_db_path)
         # @TODO: fill in self.hero_alias
 
-    def query_info(self, query):
+        self.mem_db = self._construct_mem_db(self.card_db)
+        self.keyword_db = {}
+        for keyword in hs_keywords:
+            cur_list = []
+            for idx, row in self.card_db.iterrows():
+                if keyword in row['card_text']:
+                    cur_list.append(row['web_id'])
+            self.keyword_db[keyword] = cur_list
+
+    def _construct_mem_db(self, df):
+        keys = []
+        names = []
+        card_texts = []
+        for idx, row in df.iterrows():
+            keys.append(row['web_id'])
+            names.append(row['name'])
+            card_texts.append(row['card_text'])
+        return {
+            'key': keys,
+            'name': names,
+            'text': card_texts
+        }
+
+    def _faster_isin(self, df, web_id_list):
+        return df.merge(pd.DataFrame(web_id_list, columns=['web_id']), on='web_id')
+
+    def query_stat(self, stat_query):
         assert(self.card_db is not None)
         query_str = []
-        for k, v in query.items():
-            query_str.append('%s == \"%s\"' % (k , v))
-        ret = self.card_db.query(' & '.join(query_str))
+        for k, v in stat_query.items():
+            if k in card_db_col:
+                if type(v) == int:
+                    query_str.append('%s == %s' % (k , str(v)))
+                else:
+                    query_str.append('%s == \"%s\"' % (k , v))
+        if 'expansion_group' not in stat_query or stat_query['expansion_group'] == '정규':
+            expansions = []
+            for exp_name in self.regular_expansion:
+                expansions.append('expansion == \"%s\"' % (exp_name, ))
+                expansion_query_str = ' | '.join(expansions)
+                expansion_query_str = '( ' + expansion_query_str + ' )'
+                query_str.append(expansion_query_str)
+        if len(query_str) > 0:
+            ret = self.card_db.query(' & '.join(query_str))
+        else:
+            ret = self.card_db
+        if 'keyword' in stat_query:
+            for each_keyword in stat_query['keyword']:
+                card_list = self.keyword_db[each_keyword]
+                ret = self._faster_isin(ret, card_list)
+
         return ret
+
+    def query_text(self, query_table, text_query):
+        if query_table is None:
+            assert(self.card_db is not None)
+            target_memdb = self.mem_db
+        else:
+            target_memdb = self._construct_mem_db(query_table)
+
+        name_list = target_memdb['name']
+        ret_key = []
+        for idx, each_name in enumerate(name_list):
+            if text_query in each_name:
+                ret_key.append(target_memdb['key'][idx])
+
+        return self._faster_isin(self.card_db, ret_key)
 
     # parse the text user types and return its stat query and text query
     def parse_query_text(self, text):
@@ -64,6 +133,11 @@ class DBConnector(object):
             elif type == 'attackhealth':
                 stat_query['attack'] = value[0]
                 stat_query['health'] = value[1]
+            elif type == 'keyword':
+                if type not in stat_query:
+                    stat_query[type] = [value]
+                else:
+                    stat_query[type].append(value)
             # the normal case; type should be the database column string
             else:
                 stat_query[type] = value
@@ -126,6 +200,14 @@ class DBConnector(object):
             elif word in self.rarity_alias.keys():
                 ret_type = 'rarity'
                 ret_value = self.rarity_alias[word]
+            elif word in hs_keywords:
+                ret_type = 'keyword'
+                ret_value = word
+            elif (next_word is not None and (word + ' ' + next_word) in hs_keywords):
+                ret_type = 'keyword'
+                ret_value = (word + ' ' + next_word)
+                use_nextword = True
+
 
         return ret_type, ret_value, use_nextword
 
