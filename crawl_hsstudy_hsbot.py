@@ -4,14 +4,61 @@ import urllib.request
 from bs4 import BeautifulSoup
 import time
 import pandas as pd
+import json
 
 translate_table = {
+    'hero': {
+        'DRUID': '드루이드',
+        'HUNTER': '사냥꾼',
+        'MAGE': '마법사',
+        'PALADIN': '성기사',
+        'PRIEST': '사제',
+        'ROGUE': '도적',
+        'SHAMAN': '주술사',
+        'WARLOCK': '흑마법사',
+        'WARRIOR': '전사',
+        'NEUTRAL': '중립',
+    },
+
+    'type': {
+        'HERO': '영웅 교체',
+        'MINION': '하수인',
+        'SPELL': '주문',
+        'WEAPON': '무기',
+    },
+
     'rarity': {
-        '기본': '일반',
-        '일반': '일반',
-        '희귀': '희귀',
-        '영웅': '영웅',
-        '전설': '전설'
+        'COMMON': '일반',
+        'FREE': '일반',
+        'RARE': '희귀',
+        'EPIC': '영웅',
+        'LEGENDARY': '전설'
+    },
+    'extension': {
+        'TGT': '대 마상시합',
+        'OG': '오리지널',
+        'KARA': '카라잔',
+        'GANGS': '가젯잔',
+        'UNGORO': '운고로',
+        'ICECROWN': '얼어붙은 왕좌',
+        'LOOTAPALOOZA': '코볼트',
+        'CORE': '기본',
+        'EXPERT1': '오리지널',
+        'HOF': '명예의 전당',
+        'NAXX': '낙스라마스',
+        'GVG': '고블린 대 노움',
+        'BRM': '검은바위 산',
+        'LOE': '탐험가 연맹'
+    },
+    'race': {
+        'MURLOC': '멀록',
+        'DEMON': '악마',
+        'BEAST': '야수',
+        'DRAGON': '용족',
+        'TOTEM': '토템',
+        'PIRATE': '해적',
+        'MECHANICAL': '기계',
+        'ELEMENTAL': '정령',
     }
 }
 
@@ -24,8 +71,8 @@ def initial_db():
 
 def main():
     db_root = '.'
-    index_path = 'card_info2.pd'
-    alias_path = 'alias2.pd'
+    index_path = 'card_info.pd'
+    alias_path = 'alias.pd'
 
     card_db, alias_db = initial_db()
     if os.path.exists(index_path):
@@ -44,6 +91,18 @@ def start_crawling(db_data, db_root):
     base_url = 'https://www.hearthstudy.com/cards'
     info_url = 'https://www.hearthstudy.com/card/'
 
+    card_data = {}
+    with open('cards.json', 'r', encoding='utf-8') as f:
+        with open('cards_en.json', 'r', encoding='utf-8') as f2:
+            total_db = json.load(f)
+            en_db = json.load(f2)
+
+            for card in total_db:
+                card_data[card['id']] = card
+            for card in en_db:
+                if 'name' in card:
+                    card_data[card['id']]['eng_name'] = card['name']
+
     target_str = [('expansion=' + '_'.join(map(str, target_expansion)))] if len(target_expansion) > 0 else []
 
     options = webdriver.ChromeOptions()
@@ -59,7 +118,15 @@ def start_crawling(db_data, db_root):
         ret = db_data.query('web_id == "' + str(card_id) + '"')
         if ret.empty:# or ret.iloc[0]['type'] == '무기':
             detail_url = info_url + str(card_id)
-            card_info, err = retrieve_card_information(detail_url, card_id, card_name)
+            #card_info, err = retrieve_card_information(detail_url, card_id, card_name)
+            err = False
+            card_info = card_data[card_id]
+            if 'text' in card_info:
+                if card_info['text'][:3] == '[x]':
+                    card_info['text'] = card_info['text'][3:]
+                card_info['text'] = card_info['text'].replace('\n', ' ').replace('$', '').replace('<b>', '*').replace('</b>', '*')
+            else:
+                card_info['text'] = ''
             if err:
                 continue
             # index_key = str([card_info['cost'], card_info['attack'], card_info['health']])
@@ -67,14 +134,15 @@ def start_crawling(db_data, db_root):
                             'orig_name': card_info['name'],
                             'name': preprocess_name(card_info['name']),
                             'eng_name': card_info['eng_name'],
-                            'card_text': card_info['card_text'],
-                            'hero': card_info['hero'],
-                            'type': card_info['type'],
-                            'cost': card_info['cost'],
-                            'attack': card_info['attack'],
-                            'health': card_info['health'],
-                            'rarity': card_info['rarity'],
-                            'expansion': card_info['expansion'],
+                            'card_text': card_info['text'],
+                            'hero': translate_table['hero'][card_info['cardClass']],
+                            'type': translate_table['type'][card_info['type']],
+                            'cost': card_info['cost'] if 'cost' in card_info else 0,
+                            'attack': card_info['attack'] if 'attack' in card_info else 0,
+                            'health': card_info['health'] if 'health' in card_info else (card_info['durability'] if 'durability' in card_info else 0),
+                            'rarity': translate_table['rarity'][card_info['rarity']],
+                            'expansion': translate_table['extension'][card_info['set']],
+                            'race': translate_table['race'][card_info['race']] if 'race' in card_info else '',
                             'img_url': img_url,
                             'detail_url': detail_url,
             }
