@@ -71,8 +71,8 @@ def initial_db():
 
 def main():
     db_root = '.'
-    index_path = 'card_info.pd'
-    alias_path = 'alias.pd'
+    index_path = os.path.join('database', 'card_info.pd')
+    alias_path = os.path.join('database', 'alias.pd')
 
     card_db, alias_db = initial_db()
     if os.path.exists(index_path):
@@ -92,8 +92,8 @@ def start_crawling(db_data, db_root):
     info_url = 'https://www.hearthstudy.com/card/'
 
     card_data = {}
-    with open('cards.json', 'r', encoding='utf-8') as f:
-        with open('cards_en.json', 'r', encoding='utf-8') as f2:
+    with open(os.path.join('database', 'cards.json'), 'r', encoding='utf-8') as f:
+        with open(os.path.join('database', 'cards_en.json'), 'r', encoding='utf-8') as f2:
             total_db = json.load(f)
             en_db = json.load(f2)
 

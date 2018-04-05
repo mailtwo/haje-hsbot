@@ -1,3 +1,4 @@
+import os
 import sys
 import json
 from slackclient import SlackClient
@@ -27,7 +28,7 @@ def main():
     slack_token = token_id
 
     db = DBConnector()
-    db.load('card_info.pd', 'alias.pd')
+    db.load(os.path.join('database', 'card_info.pd'), os.path.join('database', 'alias.pd'))
     # user_query = '3코 천상의 보호막 도발'
     # stat_query, text_query = db.parse_query_text(user_query)
     # print (stat_query, text_query)
