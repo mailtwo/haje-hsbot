@@ -36,6 +36,13 @@ class DBConnector(object):
                              '희귀': '희귀',
                              '전설': '전설',
                              '영웅': '영웅',}
+        self.keyword_alias = {'천보': '천상의 보호막',
+                              '생흡': '생명력 흡수',
+                              '주공': '주문 공격력',
+                              '전함': '전투의 함성',
+                              '죽메': '죽음의 메아리'
+            
+        }
         self.regular_expansion = ['코볼트', '얼어붙은 왕좌', '운고로', '가젯잔', '카라잔', '오리지널', '기본']
 
     # load DataFrame type database from the path
@@ -154,6 +161,15 @@ class DBConnector(object):
             text_query = text_query.replace('\'', '')
             text_query = text_query.replace(',', '')
 
+        # Here, if user query include any non-empty text query,
+        # the program thinks the whole user query is for the text query
+        # This prevents the situation when the first part of the normal text query
+        # is the same with the shape of the stat query
+        # ex) 퀘스트 중인 모험가 -> {keyword: 퀘스트} "중인 모험가" (X) "퀘스트 중인 모험가" (O)
+        if len(text_query) > 0:
+            stat_query = {}
+            text_query = text.replace(' ', '').replace('\'', '').replace(',', '')
+
         return stat_query, text_query
 
     # detect database column and its query value of a word
@@ -207,6 +223,9 @@ class DBConnector(object):
                 ret_type = 'keyword'
                 ret_value = (word + ' ' + next_word)
                 use_nextword = True
+            elif word in self.keyword_alias.keys():
+                ret_type = 'keyword'
+                ret_value = self.keyword_alias[word]
 
 
         return ret_type, ret_value, use_nextword
