@@ -5,6 +5,7 @@ card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost'
 hs_keywords = ['은신', '도발', '돌진', '질풍', '빙결', '침묵', '주문 공격력', '차단', '천상의 보호막', '독성',
                '전투의 함성', '죽음의 메아리', '면역', '선택', '연계', '과부하', '비밀', '예비 부품', '격려',
                '창시합', '발견', '비취 골렘', '적응', '퀘스트', '보상', '생명력 흡수', '소집', '개전', '속공', '잔상']
+hs_races = ['멀록', '악마', '야수', '용족', '토템', '해적', '기계', '정령']
 
 class DBConnector(object):
     def __init__(self):
@@ -43,7 +44,12 @@ class DBConnector(object):
                               '죽메': '죽음의 메아리'
             
         }
-        self.regular_expansion = ['코볼트', '얼어붙은 왕좌', '운고로', '가젯잔', '카라잔', '오리지널', '기본']
+        self.standard_filter = ['코볼트', '얼어붙은 왕좌', '운고로', '가젯잔', '카라잔', '오리지널', '기본']
+        expansions = []
+        for exp_name in self.standard_filter:
+            expansions.append('expansion == \"%s\"' % (exp_name, ))
+        expansion_query_str = ' | '.join(expansions)
+        self.expansion_query_str = '( ' + expansion_query_str + ' )'
 
     # load DataFrame type database from the path
     def load(self, card_db_path, alias_db_path):
@@ -53,7 +59,8 @@ class DBConnector(object):
         self.alias_db = pd.read_hdf(alias_db_path)
         # @TODO: fill in self.hero_alias
 
-        self.mem_db = self._construct_mem_db(self.card_db)
+        #self.mem_db = self._construct_mem_db(self.card_db)
+        self.mem_db = self._construct_mem_db(self.card_db.query(self.expansion_query_str))
         self.keyword_db = {}
         for keyword in hs_keywords:
             cur_list = []
@@ -88,14 +95,11 @@ class DBConnector(object):
                     query_str.append('%s == %s' % (k , str(v)))
                 else:
                     query_str.append('%s == \"%s\"' % (k , v))
-        if 'expansion_group' not in stat_query or stat_query['expansion_group'] == '정규':
-            expansions = []
-            for exp_name in self.regular_expansion:
-                expansions.append('expansion == \"%s\"' % (exp_name, ))
-                expansion_query_str = ' | '.join(expansions)
-                expansion_query_str = '( ' + expansion_query_str + ' )'
-                query_str.append(expansion_query_str)
+        # print (stat_query)
+        if ('expansion_group' not in stat_query) or (stat_query['expansion_group'] == '정규'):
+            query_str.append(self.expansion_query_str)
         if len(query_str) > 0:
+            # print (query_str)
             ret = self.card_db.query(' & '.join(query_str))
         else:
             ret = self.card_db
@@ -188,15 +192,37 @@ class DBConnector(object):
         if word in self.hero_alias.keys():
             ret_type = 'hero'
             ret_value = self.hero_alias[word]
-        elif word[-1] == '코' and  word[:-1].strip().isdigit():
+        elif (word[-1] == '코' and  word[:-1].strip().isdigit()):
             ret_type = 'cost'
             ret_value = int(word[:-1].strip())
+        elif (word[-3:] == '코스트' and  word[:-3].strip().isdigit()):
+            ret_type = 'cost'
+            ret_value = int(word[:-3].strip())
         elif word.isdigit() and (next_word is not None and next_word.isdigit()):
             attack = int(word)
             health = int(next_word)
             ret_type = 'attackhealth'
             ret_value = (attack, health)
             use_nextword = True
+        elif (word[-1] == '공' and word[:-1].strip().isdigit()):
+            attack = int(word[:-1])
+            ret_type = 'attack'
+            ret_value = attack
+        elif (word[-3:] == '공격력' and word[:-3].strip().isdigit()):
+            attack = int(word[:-3])
+            ret_type = 'attack'
+            ret_value = attack
+        elif (word[-1] == '체' and word[:-1].strip().isdigit()):
+            health = int(word[:-1])
+            ret_type = 'health'
+            ret_value = health
+        elif (word[-2:] == '체력' and word[:-2].strip().isdigit()):
+            health = int(word[:-2])
+            ret_type = 'health'
+            ret_value = health
+        elif word in hs_races:
+            ret_type = 'race'
+            ret_value = word
         else:
             if '/' in word:
                 slash_pos = word.index('/')
