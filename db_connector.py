@@ -6,14 +6,19 @@ hs_keywords = ['은신', '도발', '돌진', '질풍', '빙결', '침묵', '주�
                '전투의 함성', '죽음의 메아리', '면역', '선택', '연계', '과부하', '비밀', '예비 부품', '격려',
                '창시합', '발견', '비취 골렘', '적응', '퀘스트', '보상', '생명력 흡수', '소집', '개전', '속공', '잔상']
 hs_races = ['멀록', '악마', '야수', '용족', '토템', '해적', '기계', '정령']
+hs_expansion_group = ['정규', '야생']
 
 class DBConnector(object):
-    def __init__(self):
+    def __init__(self, mode):
+        self.mode = mode
         self.card_db = None
         self.alias_db = None
+        self.standard_filter = ['코볼트', '얼어붙은 왕좌', '운고로', '가젯잔', '카라잔', '오리지널', '기본']
+        self.wild_filter = ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹']
         self.hero_alias = {
                             '드루이드': '드루이드',
                             '드루': '드루이드',
+                            '노루': '드루이드',
                             '사냥꾼': '사냥꾼',
                             '냥꾼': '사냥꾼',
                             '마법사': '마법사',
@@ -27,7 +32,23 @@ class DBConnector(object):
                             '흑마법사': '흑마법사',
                             '흑마': '흑마법사',
                             '전사': '전사',}
-        self.expansion_alias = {}
+        self.expansion_alias = {'코볼트': '코볼트',
+                                '얼어붙은 왕좌': '얼어붙은 왕좌',
+                                '얼왕기': '얼어붙은 왕좌',
+                                '운고로': '운고로',
+                                '가젯잔': '가젯잔',
+                                '카라잔': '카라잔',
+                                '오리지널': '오리지널',
+                                '대 마상시합': '대 마상시합',
+                                '대마상': '대 마상시합',
+                                '낙스라마스': '낙스라마스',
+                                '낙스': '낙스라마스',
+                                '고블린 대 노움': '고블린 대 노움',
+                                '고놈': '고블린 대 노움',
+                                '검은바위 산': '검은바위 산',
+                                '검바산': '검은바위 산',
+                                '탐험가 연맹': '탐험가 연맹',
+                                '탐연': '탐험가 연맹',}
         self.type_alias = {'주문': '주문',
                              '하수인': '하수인',
                              '무기': '무기',
@@ -41,15 +62,17 @@ class DBConnector(object):
                               '생흡': '생명력 흡수',
                               '주공': '주문 공격력',
                               '전함': '전투의 함성',
-                              '죽메': '죽음의 메아리'
-            
-        }
-        self.standard_filter = ['코볼트', '얼어붙은 왕좌', '운고로', '가젯잔', '카라잔', '오리지널', '기본']
+                              '죽메': '죽음의 메아리',}
         expansions = []
         for exp_name in self.standard_filter:
             expansions.append('expansion == \"%s\"' % (exp_name, ))
         expansion_query_str = ' | '.join(expansions)
-        self.expansion_query_str = '( ' + expansion_query_str + ' )'
+        self.standard_query_str = '( ' + expansion_query_str + ' )'
+        expansions = []
+        for exp_name in self.wild_filter:
+            expansions.append('expansion == \"%s\"' % (exp_name, ))
+        expansion_query_str = ' | '.join(expansions)
+        self.wild_query_filter = '( ' + expansion_query_str + ' )'
 
     # load DataFrame type database from the path
     def load(self, card_db_path, alias_db_path):
@@ -60,7 +83,7 @@ class DBConnector(object):
         # @TODO: fill in self.hero_alias
 
         #self.mem_db = self._construct_mem_db(self.card_db)
-        self.mem_db = self._construct_mem_db(self.card_db.query(self.expansion_query_str))
+        self.mem_db = self._construct_mem_db(self.card_db.query(self.standard_query_str))
         self.keyword_db = {}
         for keyword in hs_keywords:
             cur_list = []
@@ -89,18 +112,30 @@ class DBConnector(object):
     def query_stat(self, stat_query):
         assert(self.card_db is not None)
         query_str = []
-        for k, v in stat_query.items():
+        if 'expansion' not in stat_query:
+            stat_query['expansion'] = []
+            if ('expansion_group' not in stat_query) or ('정규' in stat_query['expansion_group']):
+                stat_query['expansion'] += self.standard_filter
+            if ('expansion_group' in stat_query) and ('야생' in stat_query['expansion_group']):
+                stat_query['expansion'] += self.wild_filter
+
+        for k, v_list in stat_query.items():
             if k in card_db_col:
-                if type(v) == int:
-                    query_str.append('%s == %s' % (k , str(v)))
-                else:
-                    query_str.append('%s == \"%s\"' % (k , v))
+                cur_value_query = []
+                if len(v_list) == 0:
+                    continue
+                for v in v_list:
+                    if type(v) == int:
+                        cur_value_query.append('%s == %s' % (k , str(v)))
+                    else:
+                        cur_value_query.append('%s == \"%s\"' % (k , v))
+                query_str.append('(' + (' | '.join(cur_value_query)) + ')')
         # print (stat_query)
-        if ('expansion_group' not in stat_query) or (stat_query['expansion_group'] == '정규'):
-            query_str.append(self.expansion_query_str)
         if len(query_str) > 0:
-            # print (query_str)
-            ret = self.card_db.query(' & '.join(query_str))
+            query_str = ' & '.join(query_str)
+            if self.mode:
+                print (query_str)
+            ret = self.card_db.query(query_str)
         else:
             ret = self.card_db
         if 'keyword' in stat_query:
@@ -133,25 +168,34 @@ class DBConnector(object):
         split_list = text.strip().split()
 
         idx = 0
+        is_invalid = False
         while idx < len(split_list):
             word = split_list[idx]
             next_word = None if (idx == len(split_list) - 1) else split_list[idx+1]
             type, value, use_nextword = self._parse_word(word, next_word)
             if type == 'none':
+                is_invalid = True
+                break
+            if type == 'end_stat':
+                idx += 1
                 break
 
             # process the special case if the stat is concatenated
             elif type == 'attackhealth':
-                stat_query['attack'] = value[0]
-                stat_query['health'] = value[1]
-            elif type == 'keyword':
+                if 'attack' not in stat_query:
+                    stat_query['attack'] = [value[0]]
+                else:
+                    stat_query['attack'].append(value[0])
+                if 'health' not in stat_query:
+                    stat_query['health'] = [value[1]]
+                else:
+                    stat_query['health'].append(value[1])
+            # the normal case; type should be the database column string
+            else:
                 if type not in stat_query:
                     stat_query[type] = [value]
                 else:
                     stat_query[type].append(value)
-            # the normal case; type should be the database column string
-            else:
-                stat_query[type] = value
 
             # jump over the next word if the parser consume it already
             if use_nextword:
@@ -170,7 +214,7 @@ class DBConnector(object):
         # This prevents the situation when the first part of the normal text query
         # is the same with the shape of the stat query
         # ex) 퀘스트 중인 모험가 -> {keyword: 퀘스트} "중인 모험가" (X) "퀘스트 중인 모험가" (O)
-        if len(text_query) > 0:
+        if is_invalid:
             stat_query = {}
             text_query = text.replace(' ', '').replace('\'', '').replace(',', '')
 
@@ -223,6 +267,9 @@ class DBConnector(object):
         elif word in hs_races:
             ret_type = 'race'
             ret_value = word
+        elif word in hs_expansion_group:
+            ret_type = 'expansion_group'
+            ret_value = word
         else:
             if '/' in word:
                 slash_pos = word.index('/')
@@ -245,6 +292,9 @@ class DBConnector(object):
             elif word in hs_keywords:
                 ret_type = 'keyword'
                 ret_value = word
+            elif word == ';':
+                ret_type = 'end_stat'
+                ret_value = None
             elif (next_word is not None and (word + ' ' + next_word) in hs_keywords):
                 ret_type = 'keyword'
                 ret_value = (word + ' ' + next_word)
