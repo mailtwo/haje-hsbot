@@ -83,7 +83,6 @@ class BotManager():
                     self.process_bot_instruction(msg_info)
 
     def detect_msg_type(self, msg_info):
-        print (msg_info)
         if msg_info['type'] != 'message':
             return MSG_TYPE['invalid']
         if 'user' not in msg_info or msg_info['user'][0] != 'U':
