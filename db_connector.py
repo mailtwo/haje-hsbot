@@ -13,7 +13,7 @@ class DBConnector(object):
         self.mode = mode
         self.card_db = None
         self.alias_db = None
-        self.standard_filter = ['코볼트', '얼어붙은 왕좌', '운고로', '가젯잔', '카라잔', '오리지널', '기본']
+        self.standard_filter = ['코볼트', '얼어붙은 왕좌', '운고로', '가젯잔', '카라잔', '고대 신', '오리지널', '기본']
         self.wild_filter = ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹']
         self.hero_alias = {
                             '드루이드': '드루이드',
@@ -155,7 +155,10 @@ class DBConnector(object):
         name_list = target_memdb['name']
         ret_key = []
         for idx, each_name in enumerate(name_list):
-            if text_query in each_name:
+            if text_query == each_name:
+                ret_key = [target_memdb['key'][idx]]
+                break
+            elif text_query in each_name:
                 ret_key.append(target_memdb['key'][idx])
 
         return self._faster_isin(self.card_db, ret_key)

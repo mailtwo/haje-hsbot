@@ -36,7 +36,7 @@ translate_table = {
     },
     'extension': {
         'TGT': '대 마상시합',
-        'OG': '오리지널',
+        'OG': '고대 신',
         'KARA': '카라잔',
         'GANGS': '가젯잔',
         'UNGORO': '운고로',
@@ -124,7 +124,7 @@ def start_crawling(db_data, db_root):
             if 'text' in card_info:
                 if card_info['text'][:3] == '[x]':
                     card_info['text'] = card_info['text'][3:]
-                card_info['text'] = card_info['text'].replace('\n', ' ').replace('$', '').replace('<b>', '*').replace('</b>', '*')
+                card_info['text'] = card_info['text'].replace('\n', ' ').replace('$', '').replace('<b>', '*').replace('</b> ', '* ').replace('</b>', '* ')
             else:
                 card_info['text'] = ''
             if err:

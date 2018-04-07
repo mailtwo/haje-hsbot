@@ -1,7 +1,10 @@
 import os
+import io
 import json
+import unicodedata
 from slackclient import SlackClient
 from db_connector import DBConnector
+
 
 MSG_TYPE = {
     'invalid': -1,
@@ -9,32 +12,151 @@ MSG_TYPE = {
     'in_channel_msg': 2
 }
 
+def preformat_cjk (string, width, align='<', fill=' '):
+    count = (width - sum(1 + (unicodedata.east_asian_width(c) in "WF")
+                         for c in string))
+    return {
+        '>': lambda s: fill * count + s,
+        '<': lambda s: s + fill * count,
+        '^': lambda s: fill * (count / 2)
+                       + s
+                       + fill * (count / 2 + count % 2)
+        }[align](string)
+
 class BotManager():
     def __init__(self, mode):
         self.mode = mode
         self.db = DBConnector(mode)
         self.db.load(os.path.join('database', 'card_info.pd'), os.path.join('database', 'alias.pd'))
+
+        self.version = 'V0.3.0'
         self.sc = None
         self.channel_id = None
         self.slack_token = None
         with open('help.txt', 'r', encoding='utf-8') as f:
-            self.help_message = f.read()
+            self.help_message = self._read_help_file(f)
 
-        # user_query = '코볼트 죽메'
-        # stat_query, text_query = db.parse_query_text(user_query)
+
+        # user_query = '용족의 군주 데스윙'
+        # stat_query, text_query = self.db.parse_query_text(user_query)
         # print (stat_query, text_query)
         # inner_result = None
         # if len(stat_query.keys()) > 0:
-        #     inner_result = db.query_stat(stat_query)
+        #     inner_result = self.db.query_stat(stat_query)
         #     print(inner_result.shape[0])
-        # card = db.query_text(inner_result, text_query)
+        # card = self.db.query_text(inner_result, text_query)
         # print(card.shape[0])
         # for idx, row in card.iterrows():
         #     print (row)
         # return
 
-    def get_help_message(self):
-        return '```' + self.help_message + '```'
+    def _read_help_file(self, fp):
+        lines = fp.readlines()
+        ret_help = {}
+        start_idx = 0
+        cur_scope = ['base']
+        for cur_idx, line in enumerate(lines):
+            if line[:3] == '---' and line[-4:-1] == '---':
+                if start_idx != cur_idx - 1:
+                    cur_help_dict = ret_help
+                    for s in cur_scope:
+                        if s not in cur_help_dict:
+                            cur_help_dict[s] = {}
+                        cur_help_dict = cur_help_dict[s]
+                    cur_help_dict['text'] = ''.join(lines[start_idx:cur_idx])
+
+                text_scope = line[3:-4]
+                text_scope = text_scope.split('/')
+                text_scope = [s.strip() for s in text_scope]
+                cur_scope = text_scope
+                start_idx = cur_idx + 1
+
+        if start_idx != len(lines)-1:
+            cur_help_dict = ret_help
+            for s in cur_scope:
+                if s not in cur_help_dict:
+                    cur_help_dict[s] = {}
+                cur_help_dict = cur_help_dict[s]
+            cur_help_dict['text'] = ''.join(lines[start_idx:])
+
+        return ret_help
+
+    def get_help_message(self, scope):
+        cur_help_dict = self.help_message
+        for s in scope:
+            if s not in cur_help_dict:
+                return None
+            cur_help_dict = cur_help_dict[s]
+        if 'text' not in cur_help_dict:
+            return None
+
+        return '```' + cur_help_dict['text'] + '```'
+
+    def process_card_message(self, card_infos, query_text):
+        if len(card_infos) == 1:
+            card = card_infos[0]
+            stat_text = ''
+            if card['type'] == '하수인' or card['type'] == '무기':
+                stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
+            elif card['type'] == '주문' or card['type'] == '영웅 교체':
+                stat_text = '%d코스트' % (card['cost'], )
+            card_info = {
+                'author_name': '%s %s %s %s' % (card['hero'], card['rarity'], card['type'], stat_text),
+                'footer': card['expansion'],
+                'title': card['orig_name'],
+                'color': '#2eb886',
+                'title_link': card['detail_url'],
+            }
+            if len(card['card_text']) > 0:
+                field_info = [
+                    {
+                        'title': '효과',
+                        'value': card['card_text']
+                    }
+                ]
+                card_info['fields'] = field_info
+            image_info = {
+                'title': '이미지',
+                'image_url': card['img_url']
+            }
+            self.send_attach_message([card_info, image_info])
+
+        elif len(card_infos) <= 5:
+            ret_text = []
+            for idx in range(len(card_infos)):
+                card = card_infos[idx]
+                ret_text.append('<%s|%s>' % (card['detail_url'],
+                                            '[' + card['orig_name'] + ']'))
+            ret_text = ', '.join(ret_text)
+            self.send_message(ret_text)
+
+        else:
+            ret_text = []
+            #ret_text.append('%d 건의 결과가 검색되었습니다.' % (len(card_infos), ))
+            max_str_len = 0
+            each_card_len = []
+            for card in card_infos:
+                cur_len = 0
+                for c in card['orig_name']:
+                    if ord(c) < 128:
+                        cur_len += 1
+                    else:
+                        cur_len += 2
+                each_card_len.append(cur_len)
+                if max_str_len < cur_len:
+                    max_str_len = cur_len
+
+            for idx, card in enumerate(card_infos):
+                if card['type'] == '하수인' or card['type'] == '무기':
+                    stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
+                elif card['type'] == '주문' or card['type'] == '영웅 교체':
+                    stat_text = '%d코스트' % (card['cost'], )
+                stat_text = '%s %s %s %s' % (card['hero'], card['rarity'], card['type'], stat_text)
+                cur_text = '%s%s%s' %  (card['orig_name'], ' ' * (max_str_len + 5 - each_card_len[idx]),stat_text)
+                ret_text.append(cur_text)
+
+            ret_text = '\n'.join(ret_text)
+            self.upload_snippet(ret_text, raw_title='[%s] - 검색결과 %d개' % (query_text, len(card_infos)))
 
     def load_bot_token(self, path):
         if self.mode == 'debug':
@@ -108,40 +230,33 @@ class BotManager():
         if len(stat_query.keys()) > 0:
             inner_result = self.db.query_stat(stat_query)
         card = self.db.query_text(inner_result, text_query)
+        card_infos = [row for idx, row in card.iterrows()]
 
-        ret_text = ''
-        if card.empty:
+        if len(card_infos) == 0:
             ret_text = '%s 에 해당하는 카드를 찾을 수 없습니다.' % (text, )
-        elif card.shape[0] == 1:
-            cur_data = card.iloc[0]
-            ret_text = '<%s|%s>\n%s'% (cur_data['detail_url'], '[' + cur_data['orig_name'] + ']', cur_data['img_url'])
-        elif card.shape[0] <= 5:
-            ret_text = []
-            for idx in range(card.shape[0]):
-                ret_text.append('<%s|%s>' % (card.iloc[idx]['detail_url'],
-                                            '[' + card.iloc[idx]['orig_name'] + ']'))
-            ret_text = ', '.join(ret_text)
+            self.send_message(ret_text)
         else:
-            ret_text = []
-            for idx in range(5):
-                ret_text.append('<%s|%s>' % (card.iloc[idx]['detail_url'],
-                                            '[' + card.iloc[idx]['orig_name'] + ']'))
-            ret_text = ', '.join(ret_text)
-            ret_text = ('%d 건의 결과가 검색되었습니다.\n' % (card.shape[0], )) + ret_text + ' ...'
-
-        self.send_message(ret_text)
+            self.process_card_message(card_infos, user_query)
 
     def process_bot_instruction(self, msg_info):
         text = msg_info['text']
         instruction = text[4:].strip().lower()
+        arg_list = instruction.split(' ')
         if self.mode == 'debug':
             print('인식된 명령어: %s' % (instruction, ))
-        if instruction == '버전':
-            self.send_message('하스봇 버전: V 0.2.0, 3a5b1112')
-        elif instruction in ['설명', '도움', '도움말', 'help']:
-            help_message = self.get_help_message()
+        if arg_list[0] == '':
+            help_message = self.get_help_message(['base'])
             self.send_message(help_message, msg_info['user'])
-        elif instruction == '등록':
+        elif arg_list[0] == '버전':
+            self.send_message('하스봇 버전: %s' %(self.version, ))
+        elif arg_list[0] in ['설명', '도움', '도움말', 'help']:
+            help_args = ['도움말'] + arg_list[1:]
+            help_message = self.get_help_message(help_args)
+            if help_message is None:
+                self.send_message('해당하는 도움말을 찾을 수 없습니다: ' + str(help_args), msg_info['user'])
+            else:
+                self.send_message(help_message, msg_info['user'])
+        elif arg_list[0] == '등록':
             self.send_message('등록 구현 중')
     
     def send_message(self, msg_text, channel=None, user=None):
@@ -165,3 +280,27 @@ class BotManager():
                 icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
                 text=msg_text
             )
+
+    def send_attach_message(self, msg_info, channel=None):
+        if channel is None:
+            channel = self.channel_id
+        assert self.sc is not None
+        self.sc.api_call(
+            'chat.postMessage',
+            channel=channel,
+            username='하스봇',
+            icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
+            attachments=msg_info
+        )
+
+    def upload_snippet(self, raw_text, raw_title='', channel=None):
+        if channel is None:
+            channel = self.channel_id
+        assert self.sc is not None
+        self.sc.api_call(
+            'files.upload',
+            channels=channel,
+            file=io.BytesIO(str.encode(raw_text)),
+            filetype='text',
+            title=raw_title
+        )
