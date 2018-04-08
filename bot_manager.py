@@ -9,7 +9,8 @@ from db_connector import DBConnector
 MSG_TYPE = {
     'invalid': -1,
     'user_query': 1,
-    'in_channel_msg': 2
+    'in_channel_msg': 2,
+    'insert_alias': 3,
 }
 
 def preformat_cjk (string, width, align='<', fill=' '):
@@ -203,6 +204,8 @@ class BotManager():
                     self.process_user_query(msg_info)
                 elif msg_type == MSG_TYPE['in_channel_msg']:
                     self.process_bot_instruction(msg_info)
+                elif msg_type == MSG_TYPE['insert_alias']:
+                    self.process_insert_alias(msg_info['text'][2:-2])
 
     def detect_msg_type(self, msg_info):
         if msg_info['type'] != 'message':
@@ -217,7 +220,10 @@ class BotManager():
             return MSG_TYPE['invalid']
         text = msg_info['text']
         if text[:2] == '[[' and text[-2:] == ']]':
-            return MSG_TYPE['user_query']
+            if '=' in text:
+                return MSG_TYPE['insert_alias']
+            else:
+                return MSG_TYPE['user_query']
         elif text[:4] == '하스봇!':
             return MSG_TYPE['in_channel_msg']
         return MSG_TYPE['invalid']
@@ -257,8 +263,40 @@ class BotManager():
             else:
                 self.send_message(help_message, msg_info['user'])
         elif arg_list[0] == '등록':
-            self.send_message('등록 구현 중')
-    
+            text = ' '.join(arg_list[1:])
+            msg_type, msg_info = self.process_insert_alias(text)
+            if msg_type == 'simple_txt':
+                self.send_message(msg_info)
+        elif arg_list[0] == '리스트':
+            text = ' '.join(arg_list[1:])
+        elif arg_list[0] == '삭제':
+            text = ' '.join(arg_list[1:])
+
+    def process_insert_alias(self, text):
+        sep_idx = text.find('=')
+        if sep_idx < 0:
+            return
+        orig_name = text[:sep_idx].strip()
+        card_name = self.db.normalize_text(orig_name)
+        card_alias = self.db.normalize_text(text[sep_idx + 1:].strip(), cannot_believe=True)
+        cards = self.db.query_text(None, card_name)
+        if cards.shape[0] == 0:
+            return 'simple_txt', '[%s] 에 해당하는 카드를 찾을 수 없습니다.' % (orig_name,)
+        elif cards.shape[0] > 1:
+            card_to_print = cards.shape[0]
+            if card_to_print > 5:
+                card_to_print = 5
+            ret_text = []
+            for idx in range(card_to_print):
+                card = cards.iloc[idx]
+                ret_text.append('<%s|%s>' % (card['detail_url'],
+                                             '[' + card['orig_name'] + ']'))
+            ret_text = ', '.join(ret_text) + ('...' if cards.shape[0] > 5 else '')
+            ret_text = ('[%s] 에 해당하는 카드가 너무 많습니다. 검색 결과: %d개' % (orig_name, cards.shape[0])) + ret_text
+            return 'simple_txt', ret_text
+        self.db.insert_alias(cards.iloc[0], card_alias)
+        self.db.flush_alias_db()
+
     def send_message(self, msg_text, channel=None, user=None):
         if channel is None:
             channel = self.channel_id

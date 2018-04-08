@@ -66,7 +66,7 @@ card_db_col = ['web_id','orig_name', 'name', 'eng_name', 'card_text', 'hero', 't
 
 def initial_db():
     card_db = pd.DataFrame([['None', 'None', 'None', 'None', 'None','None', 'None', 0, 0, 0, 'None', 'None', 'None','None', 'None']], columns=card_db_col)
-    alias_db = pd.DataFrame([['None', 'None']], columns=['db_index', 'alias'])
+    alias_db = pd.DataFrame([['None', 'None']], columns=['web_id', 'alias'])
     return card_db, alias_db
 
 def main():
@@ -83,7 +83,8 @@ def main():
     card_db = start_crawling(card_db, db_root)
 
     card_db.to_hdf(index_path, 'df', mode='w', format='table', data_columns=True)
-    alias_db.to_hdf(alias_path, 'df', mode='w', format='table', data_columns=True)
+    if not os.path.exists(alias_path):
+        alias_db.to_hdf(alias_path, 'df', mode='w', format='table', data_columns=True)
 
 
 def start_crawling(db_data, db_root):

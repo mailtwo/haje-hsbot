@@ -2,6 +2,7 @@ import os
 import pandas as pd
 
 card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
+alias_db_col = ['web_id', 'alias']
 hs_keywords = ['은신', '도발', '돌진', '질풍', '빙결', '침묵', '주문 공격력', '차단', '천상의 보호막', '독성',
                '전투의 함성', '죽음의 메아리', '면역', '선택', '연계', '과부하', '비밀', '예비 부품', '격려',
                '창시합', '발견', '비취 골렘', '적응', '퀘스트', '보상', '생명력 흡수', '소집', '개전', '속공', '잔상']
@@ -50,10 +51,10 @@ class DBConnector(object):
                                 '탐험가 연맹': '탐험가 연맹',
                                 '탐연': '탐험가 연맹',}
         self.type_alias = {'주문': '주문',
-                             '하수인': '하수인',
-                             '무기': '무기',
-                             '죽음의 기사': '영웅 교체',
-                             '죽기': '영웅 교체',}
+                           '하수인': '하수인',
+                           '무기': '무기',
+                           '죽음의 기사': '영웅 교체',
+                           '죽기': '영웅 교체',}
         self.rarity_alias = {'일반': '일반',
                              '희귀': '희귀',
                              '전설': '전설',
@@ -80,10 +81,10 @@ class DBConnector(object):
         assert (os.path.exists(alias_db_path))
         self.card_db = pd.read_hdf(card_db_path)
         self.alias_db = pd.read_hdf(alias_db_path)
-        # @TODO: fill in self.hero_alias
 
         #self.mem_db = self._construct_mem_db(self.card_db)
         self.mem_db = self._construct_mem_db(self.card_db.query(self.standard_query_str))
+        self.alias_mem_db = self._construct_alias_mem_db(self.alias_db)
         self.keyword_db = {}
         for keyword in hs_keywords:
             cur_list = []
@@ -104,6 +105,17 @@ class DBConnector(object):
             'key': keys,
             'name': names,
             'text': card_texts
+        }
+
+    def _construct_alias_mem_db(self, df):
+        keys = []
+        names = []
+        for idx, row in df.iterrows():
+            keys.append(row['web_id'])
+            names.append(row['alias'])
+        return {
+            'key': keys,
+            'name': names,
         }
 
     def _faster_isin(self, df, web_id_list):
@@ -148,18 +160,26 @@ class DBConnector(object):
     def query_text(self, query_table, text_query):
         if query_table is None:
             assert(self.card_db is not None)
-            target_memdb = self.mem_db
+            cur_memdb = self.mem_db
+            cur_alias_mem_db = self.alias_mem_db
         else:
-            target_memdb = self._construct_mem_db(query_table)
+            cur_memdb = self._construct_mem_db(query_table)
+            joined = query_table.join(self.alias_db, on='web_id', how='right')
+            cur_alias_mem_db = self._construct_alias_mem_db(joined)
 
-        name_list = target_memdb['name']
+        name_list = cur_memdb['name']
         ret_key = []
         for idx, each_name in enumerate(name_list):
             if text_query == each_name:
-                ret_key = [target_memdb['key'][idx]]
+                ret_key = [cur_memdb['key'][idx]]
                 break
             elif text_query in each_name:
-                ret_key.append(target_memdb['key'][idx])
+                ret_key.append(cur_memdb['key'][idx])
+
+        name_list = cur_alias_mem_db['name']
+        for idx, each_name in enumerate(name_list):
+            if text_query in each_name:
+                ret_key.append(cur_alias_mem_db['key'][idx])
 
         return self._faster_isin(self.card_db, ret_key)
 
@@ -209,8 +229,7 @@ class DBConnector(object):
         # remove space, \', \, in the text query if it exists
         if idx < len(split_list):
             text_query = ''.join(split_list[idx:])
-            text_query = text_query.replace('\'', '')
-            text_query = text_query.replace(',', '')
+            text_query = self.normalize_text(text_query)
 
         # Here, if user query include any non-empty text query,
         # the program thinks the whole user query is for the text query
@@ -219,9 +238,32 @@ class DBConnector(object):
         # ex) 퀘스트 중인 모험가 -> {keyword: 퀘스트} "중인 모험가" (X) "퀘스트 중인 모험가" (O)
         if is_invalid:
             stat_query = {}
-            text_query = text.replace(' ', '').replace('\'', '').replace(',', '')
+            text_query = self.normalize_text(text)
 
         return stat_query, text_query
+
+    def normalize_text(self, text, cannot_believe=False):
+        if cannot_believe:
+            return text.replace(' ', '').replace('\'', '').replace(',', '')\
+                .replace('!', '').replace('?', '').replace('<', '').replace('>', '')
+        else:
+            return text.replace(' ', '').replace('\'', '').replace(',', '')
+
+    def insert_alias(self, card_row, card_alias):
+        web_id = card_row['web_id']
+        inserting_data = {
+            'web_id': web_id,
+            'alias': card_alias
+        }
+        self.alias_mem_db['key'].append(web_id)
+        self.alias_mem_db['name'].append(card_alias)
+        self.alias_db = self.alias_db.append([pd.DataFrame([inserting_data], columns=alias_db_col)], ignore_index=True)
+        if self.mode == 'debug':
+            print('%s (%s) -> %s 등록 완료' %(card_row['orig_name'], web_id, card_alias))
+
+    def flush_alias_db(self):
+        alias_path = os.path.join('database', 'alias.pd')
+        self.alias_db.to_hdf(alias_path, 'df', mode='w', format='table', data_columns=True)
 
     # detect database column and its query value of a word
     # next word is used to determine the pair number stream (for attack health slots)
