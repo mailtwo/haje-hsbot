@@ -11,6 +11,7 @@ MSG_TYPE = {
     'user_query': 1,
     'in_channel_msg': 2,
     'insert_alias': 3,
+    'user_card_text_query': 4
 }
 
 def get_namelist_length(name_list):
@@ -53,7 +54,7 @@ class BotManager():
             self.help_message = self._read_help_file(f)
 
 
-        # user_query = '용족의 군주 데스윙'
+        # user_query = '2/1 중립 ; 하하'
         # stat_query, text_query = self.db.parse_query_text(user_query)
         # print (stat_query, text_query)
         # inner_result = None
@@ -206,6 +207,8 @@ class BotManager():
                 msg_type = self.detect_msg_type(msg_info)
                 if msg_type == MSG_TYPE['user_query']:
                     self.process_user_query(msg_info)
+                elif msg_type == MSG_TYPE['user_card_text_query']:
+                    self.process_user_query(msg_info, is_text_for_card_text=True)
                 elif msg_type == MSG_TYPE['in_channel_msg']:
                     self.process_bot_instruction(msg_info)
                 elif msg_type == MSG_TYPE['insert_alias']:
@@ -229,18 +232,23 @@ class BotManager():
                 return MSG_TYPE['insert_alias']
             else:
                 return MSG_TYPE['user_query']
+        elif text[:2] == '((' and text[-2:] == '))':
+            return MSG_TYPE['user_card_text_query']
         elif text[:4] == '하스봇!':
             return MSG_TYPE['in_channel_msg']
         return MSG_TYPE['invalid']
 
-    def process_user_query(self, msg_info):
+    def process_user_query(self, msg_info, is_text_for_card_text=False):
         text = msg_info['text']
         user_query = text[2:-2]
         stat_query, text_query = self.db.parse_query_text(user_query)
         inner_result = None
         if len(stat_query.keys()) > 0:
             inner_result = self.db.query_stat(stat_query)
-        card = self.db.query_text(inner_result, text_query)
+        if not is_text_for_card_text:
+            card = self.db.query_text(inner_result, text_query)
+        else:
+            card = self.db.query_text_in_card_text(inner_result, text_query)
         card_infos = [row for idx, row in card.iterrows()]
 
         if len(card_infos) == 0:

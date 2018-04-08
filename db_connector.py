@@ -33,7 +33,8 @@ class DBConnector(object):
                             '술사': '주술사',
                             '흑마법사': '흑마법사',
                             '흑마': '흑마법사',
-                            '전사': '전사',}
+                            '전사': '전사',
+                            '중립': '중립'}
         self.expansion_alias = {'코볼트': '코볼트',
                                 '얼어붙은 왕좌': '얼어붙은 왕좌',
                                 '얼왕기': '얼어붙은 왕좌',
@@ -100,14 +101,17 @@ class DBConnector(object):
         keys = []
         names = []
         card_texts = []
+        card_texts_norm = []
         for idx, row in df.iterrows():
             keys.append(row['web_id'])
             names.append(row['name'])
             card_texts.append(row['card_text'])
+            card_texts_norm.append(self.normalize_text(row['card_text']))
         return {
             'key': keys,
             'name': names,
-            'text': card_texts
+            'text': card_texts,
+            'norm_text': card_texts_norm
         }
 
     def _construct_alias_mem_db(self, df):
@@ -168,7 +172,7 @@ class DBConnector(object):
             cur_alias_mem_db = self.alias_mem_db
         else:
             cur_memdb = self._construct_mem_db(query_table)
-            joined = query_table.join(self.alias_db, on='web_id', how='right', rsuffix='r_')
+            joined = pd.merge(self.alias_db, query_table[['web_id']], on='web_id', how='left')
             cur_alias_mem_db = self._construct_alias_mem_db(joined)
 
         if len(text_query) == 0:
@@ -187,6 +191,25 @@ class DBConnector(object):
         for idx, each_name in enumerate(name_list):
             if text_query in each_name:
                 ret_key.append(cur_alias_mem_db['web_id'][idx])
+
+        return self._faster_isin(self.card_db, ret_key)
+
+    def query_text_in_card_text(self, query_table, text_query):
+        text_query = text_query.strip()
+        if query_table is None:
+            assert(self.card_db is not None)
+            cur_memdb = self.mem_db
+        else:
+            cur_memdb = self._construct_mem_db(query_table)
+
+        if len(text_query) == 0:
+            return query_table
+
+        text_list = cur_memdb['norm_text']
+        ret_key = []
+        for idx, each_text in enumerate(text_list):
+            if text_query in each_text:
+                ret_key.append(cur_memdb['key'][idx])
 
         return self._faster_isin(self.card_db, ret_key)
 
