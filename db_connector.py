@@ -108,13 +108,13 @@ class DBConnector(object):
         }
 
     def _construct_alias_mem_db(self, df):
-        keys = []
+        web_ids = []
         names = []
         for idx, row in df.iterrows():
-            keys.append(row['web_id'])
+            web_ids.append(row['web_id'])
             names.append(row['alias'])
         return {
-            'key': keys,
+            'web_id': web_ids,
             'name': names,
         }
 
@@ -145,7 +145,7 @@ class DBConnector(object):
         # print (stat_query)
         if len(query_str) > 0:
             query_str = ' & '.join(query_str)
-            if self.mode:
+            if self.mode == 'debug':
                 print (query_str)
             ret = self.card_db.query(query_str)
         else:
@@ -158,14 +158,18 @@ class DBConnector(object):
         return ret
 
     def query_text(self, query_table, text_query):
+        text_query = text_query.strip()
         if query_table is None:
             assert(self.card_db is not None)
             cur_memdb = self.mem_db
             cur_alias_mem_db = self.alias_mem_db
         else:
             cur_memdb = self._construct_mem_db(query_table)
-            joined = query_table.join(self.alias_db, on='web_id', how='right')
+            joined = query_table.join(self.alias_db, on='web_id', how='right', rsuffix='r_')
             cur_alias_mem_db = self._construct_alias_mem_db(joined)
+
+        if len(text_query) == 0:
+            return query_table
 
         name_list = cur_memdb['name']
         ret_key = []
@@ -179,7 +183,7 @@ class DBConnector(object):
         name_list = cur_alias_mem_db['name']
         for idx, each_name in enumerate(name_list):
             if text_query in each_name:
-                ret_key.append(cur_alias_mem_db['key'][idx])
+                ret_key.append(cur_alias_mem_db['web_id'][idx])
 
         return self._faster_isin(self.card_db, ret_key)
 
@@ -255,11 +259,42 @@ class DBConnector(object):
             'web_id': web_id,
             'alias': card_alias
         }
-        self.alias_mem_db['key'].append(web_id)
-        self.alias_mem_db['name'].append(card_alias)
         self.alias_db = self.alias_db.append([pd.DataFrame([inserting_data], columns=alias_db_col)], ignore_index=True)
+        self.alias_mem_db = self._construct_alias_mem_db(self.alias_db)
         if self.mode == 'debug':
             print('%s (%s) -> %s 등록 완료' %(card_row['orig_name'], web_id, card_alias))
+
+    def get_alias_list(self, card_row):
+        if card_row is None:
+            target_db = self.alias_db
+        else:
+            target_db = self.alias_db[self.alias_db.web_id == card_row['web_id']]
+
+        ret_df = pd.merge(target_db, self.card_db[['web_id', 'orig_name']], how='left', on='web_id').set_index(target_db.index)
+        ret = []
+        for idx, row in ret_df.iterrows():
+            if row.name == 0:
+                continue
+            ret.append({
+                'id': row.name,
+                'name': row['orig_name'],
+                'alias': row['alias']
+            })
+        return ret
+
+    def delete_alias(self, alias_id):
+        if alias_id not in self.alias_db.index:
+            return 'empty'
+        self.alias_db.drop([alias_id], inplace=True)
+        self.alias_mem_db = self._construct_alias_mem_db(self.alias_db)
+        return 'success'
+
+    def update_alis(self, alias_id, update_to):
+        if alias_id not in self.alias_db.index:
+            return 'empty'
+        self.alias_db.at[alias_id, 'alias'] = update_to
+        self.alias_mem_db = self._construct_alias_mem_db(self.alias_db)
+        return 'success'
 
     def flush_alias_db(self):
         alias_path = os.path.join('database', 'alias.pd')
