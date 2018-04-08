@@ -46,7 +46,7 @@ class BotManager():
         self.db = DBConnector(mode)
         self.db.load(os.path.join('database', 'card_info.pd'), os.path.join('database', 'alias.pd'))
 
-        self.version = 'V0.3.0'
+        self.version = 'V0.6.0'
         self.sc = None
         self.channel_id = None
         self.slack_token = None
@@ -289,19 +289,24 @@ class BotManager():
             self.send_msg_pair(msg_pair)
         elif arg_list[0] == '수정':
             text = ' '.join(arg_list[1:])
-            msg_pair = self.process_update_alias(text)
+            msg_pair = self.process_update_alias(arg_list)
             self.send_msg_pair(msg_pair)
 
     def process_insert_alias(self, text):
         sep_idx = text.find('=')
         if sep_idx < 0:
             return MsgPair('simple_txt', '= 기호를 찾을 수 없습니다.')
-        orig_name = text[:sep_idx].strip()
-        card_name = self.db.normalize_text(orig_name)
+
+        user_query = text[:sep_idx].strip()
+        stat_query, text_query = self.db.parse_query_text(user_query)
+        inner_result = None
+        if len(stat_query.keys()) > 0:
+            inner_result = self.db.query_stat(stat_query)
+
+        cards = self.db.query_text(inner_result, text_query)
         card_alias = self.db.normalize_text(text[sep_idx + 1:].strip(), cannot_believe=True)
-        cards = self.db.query_text(None, card_name)
         if cards.shape[0] == 0:
-            return MsgPair('simple_txt', '[%s] 에 해당하는 카드를 찾을 수 없습니다.' % (orig_name,))
+            return MsgPair('simple_txt', '[%s] 에 해당하는 카드를 찾을 수 없습니다.' % (user_query,))
         elif cards.shape[0] > 1:
             card_to_print = cards.shape[0]
             if card_to_print > 5:
@@ -312,20 +317,23 @@ class BotManager():
                 ret_text.append('<%s|%s>' % (card['detail_url'],
                                              '[' + card['orig_name'] + ']'))
             ret_text = ', '.join(ret_text) + ('...' if cards.shape[0] > 5 else '')
-            ret_text = ('[%s] 에 해당하는 카드가 너무 많습니다. 검색 결과: %d개' % (orig_name, cards.shape[0])) + ret_text
+            ret_text = ('[%s] 에 해당하는 카드가 너무 많습니다. 검색 결과: %d개\n' % (user_query, cards.shape[0])) + ret_text
             return MsgPair('simple_txt', ret_text)
         self.db.insert_alias(cards.iloc[0], card_alias)
         self.db.flush_alias_db()
         return MsgPair('simple_txt', '성공적으로 등록되었습니다.')
 
     def process_list_alias(self, text):
-        orig_name = text.strip()
-        card_name = self.db.normalize_text(orig_name)
+        user_query = text
         card = None
-        if len(orig_name) > 0:
-            cards = self.db.query_text(None, card_name)
+        if len(user_query) > 0:
+            stat_query, text_query = self.db.parse_query_text(user_query)
+            inner_result = None
+            if len(stat_query.keys()) > 0:
+                inner_result = self.db.query_stat(stat_query)
+            cards = self.db.query_text(inner_result, text_query)
             if cards.shape[0] == 0:
-                return MsgPair('simple_txt', '[%s] 에 해당하는 카드를 찾을 수 없습니다.' % (orig_name,))
+                return MsgPair('simple_txt', '[%s] 에 해당하는 카드를 찾을 수 없습니다.' % (user_query,))
             elif cards.shape[0] > 1:
                 card_to_print = cards.shape[0]
                 if card_to_print > 5:
@@ -336,7 +344,7 @@ class BotManager():
                     ret_text.append('<%s|%s>' % (card['detail_url'],
                                                  '[' + card['orig_name'] + ']'))
                 ret_text = ', '.join(ret_text) + ('...' if cards.shape[0] > 5 else '')
-                ret_text = ('[%s] 에 해당하는 카드가 너무 많습니다. 검색 결과: %d개' % (orig_name, cards.shape[0])) + ret_text
+                ret_text = ('[%s] 에 해당하는 카드가 너무 많습니다. 검색 결과: %d개\n' % (user_query, cards.shape[0])) + ret_text
                 return MsgPair('simple_txt', ret_text)
             card = cards.iloc[0]
         result = self.db.get_alias_list(card)
@@ -365,12 +373,12 @@ class BotManager():
         return MsgPair('simple_txt', '성공적으로 삭제되었습니다.')
 
     def process_update_alias(self, arg_list):
-        alias_id = arg_list[0]
+        alias_id = arg_list[1]
         if not alias_id.isdigit():
             return MsgPair('simple_txt', '별명 아이디를 인식할 수 없습니다.')
         alias_id = int(alias_id)
 
-        alias_to = ''.join(arg_list[1:])
+        alias_to = ''.join(arg_list[2:])
         alias_to = self.db.normalize_text(alias_to.strip(), cannot_believe=True)
 
         result = self.db.update_alis(alias_id, alias_to)
