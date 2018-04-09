@@ -18,6 +18,8 @@ translate_table = {
         'WARLOCK': '흑마법사',
         'WARRIOR': '전사',
         'NEUTRAL': '중립',
+        'DREAM': '꿈',
+        'DEATHKNIGHT': '죽음의 기사'
     },
 
     'type': {
@@ -25,6 +27,7 @@ translate_table = {
         'MINION': '하수인',
         'SPELL': '주문',
         'WEAPON': '무기',
+        'HERO_POWER': '영웅 능력'
     },
 
     'rarity': {
@@ -106,13 +109,24 @@ def start_crawling(db_data, db_root):
 
     target_str = [('expansion=' + '_'.join(map(str, target_expansion)))] if len(target_expansion) > 0 else []
 
-    options = webdriver.ChromeOptions()
-    options.set_headless()
-    driver = webdriver.Chrome(executable_path='chromedriver.exe', chrome_options=options, service_log_path=os.path.devnull)
-    driver.implicitly_wait(3)
+    use_crawling = False
 
-    card_list, card_names, img_list = retrieve_card_idx(driver, base_url)
-    driver.get('about:blank')
+    if use_crawling:
+        options = webdriver.ChromeOptions()
+        options.set_headless()
+        driver = webdriver.Chrome(executable_path='chromedriver.exe', chrome_options=options, service_log_path=os.path.devnull)
+        driver.implicitly_wait(3)
+
+        card_list, card_names, img_list = retrieve_card_idx(driver, base_url)
+        driver.get('about:blank')
+    else:
+        card_list = []
+        card_names = []
+        img_list = []
+        for k, v in card_data.items():
+            card_list.append(k)
+            card_names.append(v['name'] if 'name' in v else '')
+            img_list.append('https://www.hearthstudy.com/images/HD_koKR/koKR_%s.png' % (k, ))
 
     possible_data = []
     for card_id, card_name, img_url in zip(card_list, card_names, img_list):
@@ -122,6 +136,12 @@ def start_crawling(db_data, db_root):
             #card_info, err = retrieve_card_information(detail_url, card_id, card_name)
             err = False
             card_info = card_data[card_id]
+            if 'type' in card_info and (card_info['type'] == 'ENCHANTMENT'):
+                continue
+            if 'set' in card_info and (card_info['set'] == 'HERO_SKINS' or card_info['set'] == 'TB' or card_info['set'] == 'CREDITS' or card_info['set'] == 'MISSIONS'):
+                continue
+            if 'name' not in card_info:
+                continue
             if 'text' in card_info:
                 if card_info['text'][:3] == '[x]':
                     card_info['text'] = card_info['text'][3:]
@@ -141,7 +161,7 @@ def start_crawling(db_data, db_root):
                             'cost': card_info['cost'] if 'cost' in card_info else 0,
                             'attack': card_info['attack'] if 'attack' in card_info else 0,
                             'health': card_info['health'] if 'health' in card_info else (card_info['durability'] if 'durability' in card_info else 0),
-                            'rarity': translate_table['rarity'][card_info['rarity']],
+                            'rarity': translate_table['rarity'][card_info['rarity']] if 'rarity' in card_info else '',
                             'expansion': translate_table['extension'][card_info['set']],
                             'race': translate_table['race'][card_info['race']] if 'race' in card_info else '',
                             'img_url': img_url,
@@ -153,7 +173,8 @@ def start_crawling(db_data, db_root):
             #     db_data[card_info['hero']]['index'][index_key] = [index_data]
             possible_data.append(index_data)
 
-    driver.close()
+    if use_crawling:
+        driver.close()
     if len(possible_data) > 0:
         db_data = db_data.append([pd.DataFrame(possible_data, columns=card_db_col)], ignore_index=True)
         db_data.drop_duplicates(subset='web_id', keep='last', inplace=True)
@@ -161,7 +182,8 @@ def start_crawling(db_data, db_root):
 
 
 def preprocess_name(card_name):
-    return card_name.replace(' ', '').replace('\'', '').replace(',', '')
+    table = str.maketrans(dict.fromkeys(' \'\",!?<>();/=+-:[]{}*&^%$#@`~\\|'))
+    return card_name.translate(table)
 
 def retrieve_card_idx(driver, target_url):
     print (target_url)

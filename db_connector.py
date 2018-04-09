@@ -103,6 +103,8 @@ class DBConnector(object):
         card_texts = []
         card_texts_norm = []
         for idx, row in df.iterrows():
+            if row['web_id'] == 'None':
+                continue
             keys.append(row['web_id'])
             names.append(row['name'])
             card_texts.append(row['card_text'])
@@ -118,6 +120,8 @@ class DBConnector(object):
         web_ids = []
         names = []
         for idx, row in df.iterrows():
+            if row['web_id'] == 'None':
+                continue
             web_ids.append(row['web_id'])
             names.append(row['alias'])
         return {
