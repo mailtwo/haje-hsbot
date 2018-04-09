@@ -119,7 +119,7 @@ class BotManager():
                 stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
             elif card['type'] == '주문' or card['type'] == '영웅 교체':
                 stat_text = '%d코스트' % (card['cost'], )
-            faction_text = '%s %s %s 카드' % (card['expansion'], card['hero'], card['rarity'])
+            faction_text = '%s %s %s%s카드' % (card['expansion'], card['hero'], ' ' if len(card['rarity']) > 0 else '' ,card['rarity'])
             stat_text = '%s %s%s%s' % (stat_text, card['race'], ' ' if len(card['race']) > 1 else '', card['type'])
             card_info = {
                 'author_name': faction_text + '\n'+stat_text,
