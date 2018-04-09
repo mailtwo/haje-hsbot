@@ -1,6 +1,7 @@
 import os
 import io
 import json
+import sys
 import unicodedata
 from slackclient import SlackClient
 from db_connector import DBConnector
@@ -54,7 +55,7 @@ class BotManager():
             self.help_message = self._read_help_file(f)
 
 
-        # user_query = '2/1 중립 ; 하하'
+        # user_query = ' '
         # stat_query, text_query = self.db.parse_query_text(user_query)
         # print (stat_query, text_query)
         # inner_result = None
@@ -203,17 +204,25 @@ class BotManager():
     def run(self):
         while self.sc.server.connected is True:
             msg_list = self.sc.rtm_read()
-            for msg_info in msg_list:
-                msg_type = self.detect_msg_type(msg_info)
-                if msg_type == MSG_TYPE['user_query']:
-                    self.process_user_query(msg_info)
-                elif msg_type == MSG_TYPE['user_card_text_query']:
-                    self.process_user_query(msg_info, is_text_for_card_text=True)
-                elif msg_type == MSG_TYPE['in_channel_msg']:
-                    self.process_bot_instruction(msg_info)
-                elif msg_type == MSG_TYPE['insert_alias']:
-                    msg_pair = self.process_insert_alias(msg_info['text'][2:-2])
-                    self.send_msg_pair(msg_pair)
+            try:
+                for msg_info in msg_list:
+                    msg_type = self.detect_msg_type(msg_info)
+                    if msg_type == MSG_TYPE['user_query']:
+                        self.process_user_query(msg_info)
+                    elif msg_type == MSG_TYPE['user_card_text_query']:
+                        self.process_user_query(msg_info, is_text_for_card_text=True)
+                    elif msg_type == MSG_TYPE['in_channel_msg']:
+                        self.process_bot_instruction(msg_info)
+                    elif msg_type == MSG_TYPE['insert_alias']:
+                        msg_pair = self.process_insert_alias(msg_info['text'][2:-2])
+                        self.send_msg_pair(msg_pair)
+            except Exception as e:
+                ret_text = []
+                ret_text.append('오류 발생')
+                ret_text.append(str(sys.exc_info()[0]))
+                ret_text = '\n'.join(ret_text)
+                msg_pair = MsgPair('simple_txt', ret_text)
+                self.send_msg_pair(msg_pair)
 
     def detect_msg_type(self, msg_info):
         if msg_info['type'] != 'message':
@@ -249,7 +258,10 @@ class BotManager():
             card = self.db.query_text(inner_result, text_query)
         else:
             card = self.db.query_text_in_card_text(inner_result, text_query)
-        card_infos = [row for idx, row in card.iterrows()]
+        if card is not None:
+            card_infos = [row for idx, row in card.iterrows()]
+        else:
+            card_infos = []
 
         if len(card_infos) == 0:
             ret_text = '%s 에 해당하는 카드를 찾을 수 없습니다.' % (text, )
@@ -305,6 +317,8 @@ class BotManager():
 
         cards = self.db.query_text(inner_result, text_query)
         card_alias = self.db.normalize_text(text[sep_idx + 1:].strip(), cannot_believe=True)
+        if len(card_alias) == 0:
+            return MsgPair('simple_txt', '별명을 작성해주세요.')
         if cards.shape[0] == 0:
             return MsgPair('simple_txt', '[%s] 에 해당하는 카드를 찾을 수 없습니다.' % (user_query,))
         elif cards.shape[0] > 1:

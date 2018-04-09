@@ -166,17 +166,21 @@ class DBConnector(object):
 
     def query_text(self, query_table, text_query):
         text_query = text_query.strip()
+        if len(text_query) == 0:
+            if query_table is None:
+                return pd.DataFrame(columns=card_db_col)
+            query_table = query_table.drop_duplicates(subset='web_id', keep='last')
+            return query_table
+
         if query_table is None:
             assert(self.card_db is not None)
             cur_memdb = self.mem_db
             cur_alias_mem_db = self.alias_mem_db
         else:
             cur_memdb = self._construct_mem_db(query_table)
-            joined = pd.merge(self.alias_db, query_table[['web_id']], on='web_id', how='left')
+            #joined = pd.merge(self.alias_db, query_table[['web_id']], on='web_id', how='left')
+            joined = self.alias_db.join(query_table[['web_id']].set_index('web_id'), how='inner', on='web_id')
             cur_alias_mem_db = self._construct_alias_mem_db(joined)
-
-        if len(text_query) == 0:
-            return query_table
 
         name_list = cur_memdb['name']
         ret_key = []
@@ -192,7 +196,9 @@ class DBConnector(object):
             if text_query in each_name:
                 ret_key.append(cur_alias_mem_db['web_id'][idx])
 
-        return self._faster_isin(self.card_db, ret_key)
+        query_table = self._faster_isin(self.card_db, ret_key)
+        query_table.drop_duplicates(subset='web_id', keep='last', inplace=True)
+        return query_table
 
     def query_text_in_card_text(self, query_table, text_query):
         text_query = text_query.strip()
@@ -259,7 +265,7 @@ class DBConnector(object):
         # remove space, \', \, in the text query if it exists
         if idx < len(split_list):
             text_query = ''.join(split_list[idx:])
-            text_query = self.normalize_text(text_query)
+            text_query = self.normalize_text(text_query, cannot_believe=True)
 
         # Here, if user query include any non-empty text query,
         # the program thinks the whole user query is for the text query
@@ -268,16 +274,16 @@ class DBConnector(object):
         # ex) 퀘스트 중인 모험가 -> {keyword: 퀘스트} "중인 모험가" (X) "퀘스트 중인 모험가" (O)
         if is_invalid:
             stat_query = {}
-            text_query = self.normalize_text(text)
+            text_query = self.normalize_text(text, cannot_believe=True)
 
         return stat_query, text_query
 
     def normalize_text(self, text, cannot_believe=False):
         if cannot_believe:
-            return text.replace(' ', '').replace('\'', '').replace(',', '')\
-                .replace('!', '').replace('?', '').replace('<', '').replace('>', '')
+            table = str.maketrans(dict.fromkeys(' \'\",!?<>();:/@#$%^&*=+-_\\|'))
+            return text.translate(table)
         else:
-            return text.replace(' ', '').replace('\'', '').replace(',', '')
+            return text.replace(' ', '').replace('\'', '').replace(',', '').replace(':', '')
 
     def insert_alias(self, card_row, card_alias):
         web_id = card_row['web_id']
