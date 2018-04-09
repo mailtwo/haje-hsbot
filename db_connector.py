@@ -280,7 +280,7 @@ class DBConnector(object):
 
     def normalize_text(self, text, cannot_believe=False):
         if cannot_believe:
-            table = str.maketrans(dict.fromkeys(' \'\",!?<>();:/@#$%^&*=+-_\\|'))
+            table = str.maketrans(dict.fromkeys(' \'\",!?<>();/=+-\\|'))
             return text.translate(table)
         else:
             return text.replace(' ', '').replace('\'', '').replace(',', '').replace(':', '')
