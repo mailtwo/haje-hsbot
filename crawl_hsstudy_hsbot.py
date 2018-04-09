@@ -182,7 +182,8 @@ def start_crawling(db_data, db_root):
 
 
 def preprocess_name(card_name):
-    return card_name.replace(' ', '').replace('\'', '').replace(',', '')
+    table = str.maketrans(dict.fromkeys(' \'\",!?<>();/=+-:[]{}*&^%$#@`~\\|'))
+    return card_name.translate(table)
 
 def retrieve_card_idx(driver, target_url):
     print (target_url)
