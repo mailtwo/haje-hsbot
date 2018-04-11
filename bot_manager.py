@@ -227,7 +227,7 @@ class BotManager():
             )
 
             self.file_db.drop([file_id], inplace=True)
-        self.file_db.reset_index(drop=True)
+        self.file_db.reset_index(drop=True, inplace=True)
         self.file_db.to_hdf(self.file_db_path, 'df', mode='w', format='table', data_columns=True)
 
         time.sleep(3600 * 24)
