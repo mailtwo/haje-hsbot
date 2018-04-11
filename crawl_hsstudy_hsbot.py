@@ -51,7 +51,8 @@ translate_table = {
         'NAXX': '낙스라마스',
         'GVG': '고블린 대 노움',
         'BRM': '검은바위 산',
-        'LOE': '탐험가 연맹'
+        'LOE': '탐험가 연맹',
+        'GILNEAS': '마녀숲'
     },
     'race': {
         'MURLOC': '멀록',
@@ -62,6 +63,7 @@ translate_table = {
         'PIRATE': '해적',
         'MECHANICAL': '기계',
         'ELEMENTAL': '정령',
+        'ALL': '모두'
     }
 }
 
@@ -145,11 +147,17 @@ def start_crawling(db_data, db_root):
             if 'text' in card_info:
                 if card_info['text'][:3] == '[x]':
                     card_info['text'] = card_info['text'][3:]
-                card_info['text'] = card_info['text'].replace('\n', ' ').replace('$', '').replace('<b>', '*').replace('</b> ', '* ').replace('</b>', '* ')
+                card_info['text'] = card_info['text'].replace('\n', ' ').replace('$', '').replace('<b>', '*').replace('</b> ', '* ').replace('</b>', '* ') \
+                    .replace('<i>', '_').replace('</i> ', '_ ').replace('</i>', '_ ')
             else:
                 card_info['text'] = ''
+            if '_BOSS_' in card_info['id']:
+                continue
             if err:
                 continue
+            if card_info['id'] in ['EX1_050', 'EX1_295', 'EX1_620']:
+                card_info['set'] = 'HOF'
+
             # index_key = str([card_info['cost'], card_info['attack'], card_info['health']])
             index_data = {  'web_id': card_info['id'],
                             'orig_name': card_info['name'],
