@@ -7,7 +7,7 @@ hs_keywords = ['은신', '도발', '돌진', '질풍', '빙결', '침묵', '주�
                '전투의 함성', '전투의 함성:', '죽음의 메아리', '죽음의 메아리:', '면역', '선택', '선택:', '연계',
                '과부하', '비밀', '비밀:', '예비 부품', '격려', '격려:', '창시합', '발견', '비취 골렘', '적응', '퀘스트',
                '퀘스트:', '보상', '보상:', '생명력 흡수', '소집', '개전', '속공', '잔상']
-hs_races = ['멀록', '악마', '야수', '용족', '토템', '해적', '기계', '정령']
+hs_races = ['멀록', '악마', '야수', '용족', '토템', '해적', '기계', '정령', '모두']
 hs_expansion_group = ['정규', '야생']
 
 class DBConnector(object):
@@ -15,8 +15,8 @@ class DBConnector(object):
         self.mode = mode
         self.card_db = None
         self.alias_db = None
-        self.standard_filter = ['코볼트', '얼어붙은 왕좌', '운고로', '가젯잔', '카라잔', '고대 신', '오리지널', '기본']
-        self.wild_filter = ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹']
+        self.standard_filter = ['코볼트', '얼어붙은 왕좌', '운고로', '마녀숲', '오리지널', '기본']
+        self.wild_filter = ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹', '가젯잔', '카라잔', '고대 신']
         self.hero_alias = {
                             '드루이드': '드루이드',
                             '드루': '드루이드',
@@ -51,10 +51,12 @@ class DBConnector(object):
                                 '검은바위 산': '검은바위 산',
                                 '검바산': '검은바위 산',
                                 '탐험가 연맹': '탐험가 연맹',
-                                '탐연': '탐험가 연맹',}
+                                '탐연': '탐험가 연맹',
+                                '마녀숲': '마녀숲'}
         self.type_alias = {'주문': '주문',
                            '하수인': '하수인',
                            '무기': '무기',
+                           '영웅 교체': '영웅 교체',
                            '죽음의 기사': '영웅 교체',
                            '죽기': '영웅 교체',}
         self.rarity_alias = {'일반': '일반',
@@ -141,6 +143,8 @@ class DBConnector(object):
                 stat_query['expansion'] += self.standard_filter
             if ('expansion_group' in stat_query) and ('야생' in stat_query['expansion_group']):
                 stat_query['expansion'] += self.wild_filter
+        if ('race' in stat_query) and ('모두' not in stat_query['race']):
+            stat_query['race'].append('모두')
 
         for k, v_list in stat_query.items():
             if k in card_db_col:
@@ -188,17 +192,20 @@ class DBConnector(object):
 
         name_list = cur_memdb['name']
         ret_key = []
+        exactly_match = False
         for idx, each_name in enumerate(name_list):
             if text_query == each_name:
                 ret_key = [cur_memdb['key'][idx]]
+                exactly_match = True
                 break
             elif text_query in each_name:
                 ret_key.append(cur_memdb['key'][idx])
 
-        name_list = cur_alias_mem_db['name']
-        for idx, each_name in enumerate(name_list):
-            if text_query in each_name:
-                ret_key.append(cur_alias_mem_db['web_id'][idx])
+        if not exactly_match:
+            name_list = cur_alias_mem_db['name']
+            for idx, each_name in enumerate(name_list):
+                if text_query in each_name:
+                    ret_key.append(cur_alias_mem_db['web_id'][idx])
 
         query_table = self._faster_isin(self.card_db, ret_key)
         query_table.drop_duplicates(subset='web_id', keep='last', inplace=True)
@@ -229,13 +236,14 @@ class DBConnector(object):
         text_query = ''
 
         split_list = text.strip().split()
+        split_list = [w.strip() for w in split_list]
 
         idx = 0
         is_invalid = False
         while idx < len(split_list):
             word = split_list[idx]
             next_word = None if (idx == len(split_list) - 1) else split_list[idx+1]
-            type, value, use_nextword = self._parse_word(word, next_word)
+            type, value, use_nextword = self._parse_word(split_list, idx)
             if type == 'none':
                 is_invalid = True
                 break
@@ -261,10 +269,7 @@ class DBConnector(object):
                     stat_query[type].append(value)
 
             # jump over the next word if the parser consume it already
-            if use_nextword:
-                idx += 2
-            else:
-                idx += 1
+            idx += (use_nextword + 1)
 
         # remove space, \', \, in the text query if it exists
         if idx < len(split_list):
@@ -340,43 +345,42 @@ class DBConnector(object):
     # next word is used to determine the pair number stream (for attack health slots)
     # also it returns use_nextword which becomes true if it 'consumes' the next word while parsing the word
     # return 'none', None, False if it is not part of the database column types
-    def _parse_word(self, word, next_word):
-        word = word.strip()
-        if next_word is not None:
-            next_word = next_word.strip()
+    def _parse_word(self, word_list, word_idx):
+        word = word_list[word_idx]
+        next_words = word_list[word_idx:]
 
         ret_type = 'none'
         ret_value = None
-        use_nextword = False
+        use_nextword = 0
 
         if word in self.hero_alias.keys():
             ret_type = 'hero'
             ret_value = self.hero_alias[word]
-        elif (word[-1] == '코' and  word[:-1].strip().isdigit()):
+        elif (word[-1] == '코' and  word[:-1].isdigit()):
             ret_type = 'cost'
             ret_value = int(word[:-1].strip())
-        elif (word[-3:] == '코스트' and  word[:-3].strip().isdigit()):
+        elif (word[-3:] == '코스트' and  word[:-3].isdigit()):
             ret_type = 'cost'
             ret_value = int(word[:-3].strip())
-        elif word.isdigit() and (next_word is not None and next_word.isdigit()):
+        elif word.isdigit() and (len(next_words) > 1 is not None and next_words[1].isdigit()):
             attack = int(word)
-            health = int(next_word)
+            health = int(next_words[1])
             ret_type = 'attackhealth'
             ret_value = (attack, health)
-            use_nextword = True
-        elif (word[-1] == '공' and word[:-1].strip().isdigit()):
+            use_nextword = 1
+        elif (word[-1] == '공' and word[:-1].isdigit()):
             attack = int(word[:-1])
             ret_type = 'attack'
             ret_value = attack
-        elif (word[-3:] == '공격력' and word[:-3].strip().isdigit()):
+        elif (word[-3:] == '공격력' and word[:-3].isdigit()):
             attack = int(word[:-3])
             ret_type = 'attack'
             ret_value = attack
-        elif (word[-1] == '체' and word[:-1].strip().isdigit()):
+        elif (word[-1] == '체' and word[:-1].isdigit()):
             health = int(word[:-1])
             ret_type = 'health'
             ret_value = health
-        elif (word[-2:] == '체력' and word[:-2].strip().isdigit()):
+        elif (word[-2:] == '체력' and word[:-2].isdigit()):
             health = int(word[:-2])
             ret_type = 'health'
             ret_value = health
@@ -386,39 +390,60 @@ class DBConnector(object):
         elif word in hs_expansion_group:
             ret_type = 'expansion_group'
             ret_value = word
-        else:
-            if '/' in word:
-                slash_pos = word.index('/')
-                if word[:slash_pos].strip().isdigit() and word[slash_pos+1:].strip().isdigit():
-                    attack = int(word[:slash_pos].strip())
-                    health = int(word[slash_pos+1:].strip().strip())
-                    ret_type = 'attackhealth'
-                    ret_value = (attack, health)
 
-            elif word in self.expansion_alias.keys():
-                ret_type = 'expansion'
-                ret_value = self.expansion_alias[word]
+        if ret_type != 'none':
+            return ret_type, ret_value, use_nextword
 
-            elif word in self.type_alias.keys():
-                ret_type = 'type'
-                ret_value = self.type_alias[word]
-            elif word in self.rarity_alias.keys():
-                ret_type = 'rarity'
-                ret_value = self.rarity_alias[word]
-            elif word in hs_keywords:
-                ret_type = 'keyword'
-                ret_value = word
-            elif word == ';':
-                ret_type = 'end_stat'
-                ret_value = None
-            elif (next_word is not None and (word + ' ' + next_word) in hs_keywords):
-                ret_type = 'keyword'
-                ret_value = (word + ' ' + next_word)
-                use_nextword = True
-            elif word in self.keyword_alias.keys():
-                ret_type = 'keyword'
-                ret_value = self.keyword_alias[word]
+        if '/' in word:
+            slash_pos = word.index('/')
+            if word[:slash_pos].strip().isdigit() and word[slash_pos+1:].strip().isdigit():
+                attack = int(word[:slash_pos].strip())
+                health = int(word[slash_pos+1:].strip().strip())
+                ret_type = 'attackhealth'
+                ret_value = (attack, health)
 
+        elif word in self.type_alias.keys():
+            ret_type = 'type'
+            ret_value = self.type_alias[word]
+        elif word in self.rarity_alias.keys():
+            ret_type = 'rarity'
+            ret_value = self.rarity_alias[word]
+        elif word == ';':
+            ret_type = 'end_stat'
+            ret_value = None
+
+        result = self._parse_from_list(hs_keywords, next_words)
+        if result is not None:
+            return ('keyword', result[0], result[1])
+
+        result = self._parse_from_list(self.keyword_alias.keys(), next_words)
+        if result is not None:
+            return ('keyword', result[0], result[1])
+        result = self._parse_from_list(self.expansion_alias.keys(), next_words)
+        if result is not None:
+            return ('expansion', result[0], result[1])
 
         return ret_type, ret_value, use_nextword
 
+    def _parse_from_list(self, compare_list, next_words):
+        found = None
+        found_sp = None
+        found_flag = False
+        for found in compare_list:
+            found_sp = found.split(' ')
+            if len(next_words) < len(found_sp):
+                continue
+            compare = next_words[:len(found_sp)]
+            found_flag = True
+            for c_idx, c in enumerate(compare):
+                if c != found_sp[c_idx]:
+                    found_flag = False
+                    break
+            if found_flag:
+                break
+        if found_flag:
+            ret_value = found
+            use_nextword = len(found_sp) - 1
+            return ret_value, use_nextword
+        else:
+            return None

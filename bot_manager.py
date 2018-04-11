@@ -47,7 +47,7 @@ class BotManager():
         self.db = DBConnector(mode)
         self.db.load(os.path.join('database', 'card_info.pd'), os.path.join('database', 'alias.pd'))
 
-        self.version = 'V0.9.0'
+        self.version = 'V1.1.0'
         self.sc = None
         self.channel_id = None
         self.slack_token = None
@@ -55,7 +55,7 @@ class BotManager():
             self.help_message = self._read_help_file(f)
 
 
-        # user_query = 'n'
+        # user_query = '성기사 전설 천상의 보호막 1코 2코 3코 4코 5코 6코 7코 8코 9코 10코 무기 대 마상시합 고블린 대 노움'
         # stat_query, text_query = self.db.parse_query_text(user_query)
         # print (stat_query, text_query)
         # inner_result = None
