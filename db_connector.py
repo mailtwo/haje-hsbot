@@ -292,7 +292,8 @@ class DBConnector(object):
             table = str.maketrans(dict.fromkeys(' \'\",!?<>();/=+-\\|'))
             return text.translate(table)
         else:
-            return text.replace(' ', '').replace('\'', '').replace(',', '').replace(':', '')
+            table = str.maketrans(dict.fromkeys(' \',:*_'))
+            return text.translate(table)
 
     def insert_alias(self, card_row, card_alias):
         web_id = card_row['web_id']
