@@ -2,7 +2,9 @@ import os
 import io
 import json
 import sys
-import unicodedata
+import pandas as pd
+import threading
+import time
 from slackclient import SlackClient
 from db_connector import DBConnector
 
@@ -14,6 +16,7 @@ MSG_TYPE = {
     'insert_alias': 3,
     'user_card_text_query': 4
 }
+file_db_col = ['date', 'file_id']
 
 def get_namelist_length(name_list):
     max_str_len = 0
@@ -54,15 +57,19 @@ class BotManager():
         with open('help.txt', 'r', encoding='utf-8') as f:
             self.help_message = self._read_help_file(f)
 
+        self.file_db_path = os.path.join('database', 'file_db.pd')
+        self.file_db = pd.DataFrame([[pd.to_datetime('now'), 'None']], columns=file_db_col)
+        if os.path.exists(self.file_db_path):
+            self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '성기사 전설 천상의 보호막 1코 2코 3코 4코 5코 6코 7코 8코 9코 10코 무기 대 마상시합 고블린 대 노움'
+        # user_query = '; 무작위 전설'
         # stat_query, text_query = self.db.parse_query_text(user_query)
         # print (stat_query, text_query)
         # inner_result = None
         # if len(stat_query.keys()) > 0:
         #     inner_result = self.db.query_stat(stat_query)
         #     print(inner_result.shape[0])
-        # card = self.db.query_text(inner_result, text_query)
+        # card = self.db.query_text_in_card_text(inner_result, text_query)
         # print(card.shape[0])
         # for idx, row in card.iterrows():
         #     print (row)
@@ -201,28 +208,56 @@ class BotManager():
         print('Start running...')
         return True
 
+    def file_db_remover_thread(self):
+        remove_target = []
+        for itr, row in self.file_db.iterrows():
+            file_date = row['date']
+            file_id = row['file_id']
+            if file_id == 'None':
+                continue
+            now_time = pd.to_datetime('now')
+            diff = now_time - file_date
+            if diff.seconds >= 3600 * 24 * 1:
+                remove_target.append(row.name)
+
+        for file_id in remove_target:
+            result = self.sc.api_call(
+                'files.delete',
+                file=self.file_db.loc[file_id]['file_id']
+            )
+
+            self.file_db.drop([file_id], inplace=True)
+        self.file_db.reset_index(drop=True)
+        self.file_db.to_hdf(self.file_db_path, 'df', mode='w', format='table', data_columns=True)
+
+        time.sleep(3600 * 24)
+        t = threading.Thread(target=self.file_db_remover_thread)
+        t.start()
+
     def run(self):
+        t = threading.Thread(target=self.file_db_remover_thread)
+        t.start()
         while self.sc.server.connected is True:
             msg_list = self.sc.rtm_read()
-            try:
-                for msg_info in msg_list:
-                    msg_type = self.detect_msg_type(msg_info)
-                    if msg_type == MSG_TYPE['user_query']:
-                        self.process_user_query(msg_info)
-                    elif msg_type == MSG_TYPE['user_card_text_query']:
-                        self.process_user_query(msg_info, is_text_for_card_text=True)
-                    elif msg_type == MSG_TYPE['in_channel_msg']:
-                        self.process_bot_instruction(msg_info)
-                    elif msg_type == MSG_TYPE['insert_alias']:
-                        msg_pair = self.process_insert_alias(msg_info['text'][2:-2])
-                        self.send_msg_pair(msg_pair)
-            except Exception as e:
-                ret_text = []
-                ret_text.append('오류 발생')
-                ret_text.append(str(sys.exc_info()[0]))
-                ret_text = '\n'.join(ret_text)
-                msg_pair = MsgPair('simple_txt', ret_text)
-                self.send_msg_pair(msg_pair)
+            #try:
+            for msg_info in msg_list:
+                msg_type = self.detect_msg_type(msg_info)
+                if msg_type == MSG_TYPE['user_query']:
+                    self.process_user_query(msg_info)
+                elif msg_type == MSG_TYPE['user_card_text_query']:
+                    self.process_user_query(msg_info, is_text_for_card_text=True)
+                elif msg_type == MSG_TYPE['in_channel_msg']:
+                    self.process_bot_instruction(msg_info)
+                elif msg_type == MSG_TYPE['insert_alias']:
+                    msg_pair = self.process_insert_alias(msg_info['text'][2:-2])
+                    self.send_msg_pair(msg_pair)
+            # except Exception as e:
+            #     ret_text = []
+            #     ret_text.append('오류 발생')
+            #     ret_text.append(str(sys.exc_info()[0]))
+            #     ret_text = '\n'.join(ret_text)
+            #     msg_pair = MsgPair('simple_txt', ret_text)
+            #     self.send_msg_pair(msg_pair)
 
     def detect_msg_type(self, msg_info):
         if msg_info['type'] != 'message':
@@ -448,10 +483,20 @@ class BotManager():
         if channel is None:
             channel = self.channel_id
         assert self.sc is not None
-        self.sc.api_call(
+        result = self.sc.api_call(
             'files.upload',
             channels=channel,
             file=io.BytesIO(str.encode(raw_text)),
             filetype='text',
             title=raw_title
         )
+
+        if result['ok']:
+            file_id = result['file']['id']
+            upload_date = pd.to_datetime('now')
+            inserting_data = {
+                'date': upload_date,
+                'file_id': file_id
+            }
+            self.file_db = self.file_db.append([pd.DataFrame([inserting_data], columns=file_db_col)], ignore_index=True)
+            self.file_db.to_hdf(self.file_db_path, 'df', mode='w', format='table', data_columns=True)
