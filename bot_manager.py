@@ -5,6 +5,7 @@ import sys
 import pandas as pd
 import threading
 import time
+import traceback
 from slackclient import SlackClient
 from db_connector import DBConnector
 
@@ -230,7 +231,7 @@ class BotManager():
         self.file_db.reset_index(drop=True, inplace=True)
         self.file_db.to_hdf(self.file_db_path, 'df', mode='w', format='table', data_columns=True)
 
-        time.sleep(3600 * 24)
+        time.sleep(3600 * 2)
         t = threading.Thread(target=self.file_db_remover_thread)
         t.start()
 
@@ -239,25 +240,29 @@ class BotManager():
         t.start()
         while self.sc.server.connected is True:
             msg_list = self.sc.rtm_read()
-            #try:
-            for msg_info in msg_list:
-                msg_type = self.detect_msg_type(msg_info)
-                if msg_type == MSG_TYPE['user_query']:
-                    self.process_user_query(msg_info)
-                elif msg_type == MSG_TYPE['user_card_text_query']:
-                    self.process_user_query(msg_info, is_text_for_card_text=True)
-                elif msg_type == MSG_TYPE['in_channel_msg']:
-                    self.process_bot_instruction(msg_info)
-                elif msg_type == MSG_TYPE['insert_alias']:
-                    msg_pair = self.process_insert_alias(msg_info['text'][2:-2])
-                    self.send_msg_pair(msg_pair)
-            # except Exception as e:
-            #     ret_text = []
-            #     ret_text.append('오류 발생')
-            #     ret_text.append(str(sys.exc_info()[0]))
-            #     ret_text = '\n'.join(ret_text)
-            #     msg_pair = MsgPair('simple_txt', ret_text)
-            #     self.send_msg_pair(msg_pair)
+            try:
+                for msg_info in msg_list:
+                    msg_type = self.detect_msg_type(msg_info)
+                    if msg_type == MSG_TYPE['user_query']:
+                        self.process_user_query(msg_info)
+                    elif msg_type == MSG_TYPE['user_card_text_query']:
+                        self.process_user_query(msg_info, is_text_for_card_text=True)
+                    elif msg_type == MSG_TYPE['in_channel_msg']:
+                        self.process_bot_instruction(msg_info)
+                    elif msg_type == MSG_TYPE['insert_alias']:
+                        msg_pair = self.process_insert_alias(msg_info['text'][2:-2])
+                        self.send_msg_pair(msg_pair)
+            except Exception as e:
+                ret_text = []
+                ret_text.append('오류 발생')
+                ret_text.append(str(sys.exc_info()[0]))
+                ret_text = '\n'.join(ret_text)
+                msg_pair = MsgPair('simple_txt', ret_text)
+                self.send_msg_pair(msg_pair)
+                with open('error.log', 'w') as f:
+                    f.write(ret_text)
+                    f.write(traceback.format_exc())
+                sys.exit(1)
 
     def detect_msg_type(self, msg_info):
         if msg_info['type'] != 'message':
