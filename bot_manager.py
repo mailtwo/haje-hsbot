@@ -63,14 +63,14 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '; 무작위 전설'
+        # user_query = '하드로녹스'
         # stat_query, text_query = self.db.parse_query_text(user_query)
         # print (stat_query, text_query)
         # inner_result = None
         # if len(stat_query.keys()) > 0:
         #     inner_result = self.db.query_stat(stat_query)
         #     print(inner_result.shape[0])
-        # card = self.db.query_text_in_card_text(inner_result, text_query)
+        # card = self.db.query_text(inner_result, text_query)
         # print(card.shape[0])
         # for idx, row in card.iterrows():
         #     print (row)

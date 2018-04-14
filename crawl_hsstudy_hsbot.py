@@ -69,6 +69,9 @@ translate_table = {
 
 card_db_col = ['web_id','orig_name', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
 
+force_run = True
+save_db = False
+
 def initial_db():
     card_db = pd.DataFrame([['None', 'None', 'None', 'None', 'None','None', 'None', 0, 0, 0, 'None', 'None', 'None','None', 'None']], columns=card_db_col)
     alias_db = pd.DataFrame([['None', 'None']], columns=['web_id', 'alias'])
@@ -87,9 +90,12 @@ def main():
 
     card_db = start_crawling(card_db, db_root)
 
-    card_db.to_hdf(index_path, 'df', mode='w', format='table', data_columns=True)
-    if not os.path.exists(alias_path):
-        alias_db.to_hdf(alias_path, 'df', mode='w', format='table', data_columns=True)
+    if save_db:
+        card_db.to_hdf(index_path, 'df', mode='w', format='table', data_columns=True)
+        if not os.path.exists(alias_path):
+            alias_db.to_hdf(alias_path, 'df', mode='w', format='table', data_columns=True)
+    else:
+        print('DB is not saved!')
 
 
 def start_crawling(db_data, db_root):
@@ -131,13 +137,11 @@ def start_crawling(db_data, db_root):
             img_list.append('https://www.hearthstudy.com/images/HD_koKR/koKR_%s.png' % (k, ))
 
     possible_data = []
+    name_dict = {}
+
     for card_id, card_name, img_url in zip(card_list, card_names, img_list):
-        ret = db_data.query('web_id == "' + str(card_id) + '"')
-        if ret.empty:# or ret.iloc[0]['type'] == '무기':
-            detail_url = info_url + str(card_id)
-            #card_info, err = retrieve_card_information(detail_url, card_id, card_name)
-            err = False
             card_info = card_data[card_id]
+            card_info['img_url'] = img_url
             if 'type' in card_info and (card_info['type'] == 'ENCHANTMENT'):
                 continue
             if 'set' in card_info and (card_info['set'] == 'HERO_SKINS' or card_info['set'] == 'TB' or card_info['set'] == 'CREDITS' or card_info['set'] == 'MISSIONS'):
@@ -153,10 +157,56 @@ def start_crawling(db_data, db_root):
                 card_info['text'] = ''
             if '_BOSS_' in card_info['id']:
                 continue
-            if err:
-                continue
+
             if card_info['id'] in ['EX1_050', 'EX1_295', 'EX1_620']:
                 card_info['set'] = 'HOF'
+
+            if card_info['name'] not in name_dict.keys():
+                name_dict[card_info['name']] = [card_info]
+            else:
+                name_dict[card_info['name']].append(card_info)
+
+    card_info_list = []
+    for k, v in name_dict.items():
+        if len(v) > 1:
+            count_collectible = 0
+
+            saved_c_idx = -1
+            for c_idx, c in enumerate(v):
+                if 'collectible' in c and c['collectible']:
+                    count_collectible += 1
+                    saved_c_idx = c_idx
+            if count_collectible == 0:
+                min_idx = -1
+                min_str = None
+                for c_idx, c in enumerate(v):
+                    cur_str = c['id'].lower()
+                    if cur_str[:3] == 'at_':
+                        continue
+                    if min_idx < 0 or min_str > cur_str:
+                        min_idx = c_idx
+                        min_str = cur_str
+                if min_idx < 0:
+                    min_idx = 0
+                card_info_list.append(v[min_idx])
+            elif count_collectible == 1:
+                card_info_list.append(v[saved_c_idx])
+            else:
+                assert False
+        else:
+            card_info_list.append(v[0])
+
+    for card_info in card_info_list:
+        card_id = card_info['id']
+
+        is_proceed = True
+        if not force_run:
+            ret = db_data.query('web_id == "' + str(card_id) + '"')
+            is_proceed = bool(ret.empty)
+        if is_proceed:# or ret.iloc[0]['type'] == '무기':
+            detail_url = info_url + str(card_id)
+            #card_info, err = retrieve_card_information(detail_url, card_id, card_name)
+            card_info = card_data[card_id]
 
             # index_key = str([card_info['cost'], card_info['attack'], card_info['health']])
             index_data = {  'web_id': card_info['id'],
@@ -172,7 +222,7 @@ def start_crawling(db_data, db_root):
                             'rarity': translate_table['rarity'][card_info['rarity']] if 'rarity' in card_info else '',
                             'expansion': translate_table['extension'][card_info['set']],
                             'race': translate_table['race'][card_info['race']] if 'race' in card_info else '',
-                            'img_url': img_url,
+                            'img_url': card_info['img_url'],
                             'detail_url': detail_url,
             }
             # if index_key in db_data[card_info['hero']]['index']:
@@ -180,7 +230,6 @@ def start_crawling(db_data, db_root):
             # else:
             #     db_data[card_info['hero']]['index'][index_key] = [index_data]
             possible_data.append(index_data)
-
     if use_crawling:
         driver.close()
     if len(possible_data) > 0:

@@ -4,7 +4,7 @@ import pandas as pd
 card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
 alias_db_col = ['web_id', 'alias']
 hs_keywords = ['은신', '도발', '돌진', '질풍', '빙결', '침묵', '주문 공격력', '차단', '천상의 보호막', '독성',
-               '전투의 함성', '전투의 함성:', '죽음의 메아리', '죽음의 메아리:', '면역', '선택', '선택:', '연계',
+               '전투의 함성', '전투의 함성:', '죽음의 메아리', '죽음의 메아리:', '면역', '선택 -', '선택', '연계', '연계:'
                '과부하', '비밀', '비밀:', '예비 부품', '격려', '격려:', '창시합', '발견', '비취 골렘', '적응', '퀘스트',
                '퀘스트:', '보상', '보상:', '생명력 흡수', '소집', '개전', '속공', '잔상']
 hs_races = ['멀록', '악마', '야수', '용족', '토템', '해적', '기계', '정령', '모두']
@@ -37,6 +37,7 @@ class DBConnector(object):
                             '중립': '중립'}
         self.expansion_alias = {'코볼트': '코볼트',
                                 '얼어붙은 왕좌': '얼어붙은 왕좌',
+                                '얼왕': '얼어붙은 왕좌',
                                 '얼왕기': '얼어붙은 왕좌',
                                 '운고로': '운고로',
                                 '가젯잔': '가젯잔',
@@ -47,6 +48,7 @@ class DBConnector(object):
                                 '낙스라마스': '낙스라마스',
                                 '낙스': '낙스라마스',
                                 '고블린 대 노움': '고블린 대 노움',
+                                '고대놈': '고블린 대 노움',
                                 '고놈': '고블린 대 노움',
                                 '검은바위 산': '검은바위 산',
                                 '검바산': '검은바위 산',
@@ -56,6 +58,7 @@ class DBConnector(object):
         self.type_alias = {'주문': '주문',
                            '하수인': '하수인',
                            '무기': '무기',
+                           '교체': '영웅 교체',
                            '영웅 교체': '영웅 교체',
                            '죽음의 기사': '영웅 교체',
                            '죽기': '영웅 교체',}
@@ -69,7 +72,9 @@ class DBConnector(object):
                               '전함': '전투의 함성',
                               '전함:': '전투의 함성:',
                               '죽메': '죽음의 메아리',
-                              '죽메:': '죽음의 메아리:',}
+                              '죽메:': '죽음의 메아리:',
+                              '선택-': '선택 -',
+                              '선택:': '선택 -'}
         expansions = []
         for exp_name in self.standard_filter:
             expansions.append('expansion == \"%s\"' % (exp_name, ))
@@ -235,6 +240,9 @@ class DBConnector(object):
         stat_query = {}
         text_query = ''
 
+        if text.find(';') >= 0:
+            semi_pos = text.find(';')
+            text = text[:semi_pos] + ' ' + text[semi_pos] + ' ' + text[semi_pos+1:]
         split_list = text.strip().split()
         split_list = [w.strip() for w in split_list]
 
@@ -289,7 +297,7 @@ class DBConnector(object):
 
     def normalize_text(self, text, cannot_believe=False):
         if cannot_believe:
-            table = str.maketrans(dict.fromkeys(' \'\",!?<>();/=+-\\|'))
+            table = str.maketrans(dict.fromkeys(' \'\",!?<>();/=+\\|'))
             return text.translate(table)
         else:
             table = str.maketrans(dict.fromkeys(' \',:*_'))
@@ -419,10 +427,10 @@ class DBConnector(object):
 
         result = self._parse_from_list(self.keyword_alias.keys(), next_words)
         if result is not None:
-            return ('keyword', result[0], result[1])
+            return ('keyword', self.keyword_alias[result[0]], result[1])
         result = self._parse_from_list(self.expansion_alias.keys(), next_words)
         if result is not None:
-            return ('expansion', result[0], result[1])
+            return ('expansion', self.expansion_alias[result[0]], result[1])
 
         return ret_type, ret_value, use_nextword
 
