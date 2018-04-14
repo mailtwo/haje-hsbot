@@ -218,7 +218,7 @@ class BotManager():
                 continue
             now_time = pd.to_datetime('now')
             diff = now_time - file_date
-            if diff.seconds >= 3600 * 24 * 1:
+            if diff.total_seconds() >= 3600 * 24 * 1:
                 remove_target.append(row.name)
 
         for file_id in remove_target:
