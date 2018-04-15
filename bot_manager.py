@@ -63,7 +63,7 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '하드로녹스'
+        # user_query = '2코 2 3 죽메'
         # stat_query, text_query = self.db.parse_query_text(user_query)
         # print (stat_query, text_query)
         # inner_result = None

@@ -157,6 +157,8 @@ def start_crawling(db_data, db_root):
                 card_info['text'] = ''
             if '_BOSS_' in card_info['id']:
                 continue
+            card_info['text'] = card_info['text'].replace(chr(160), chr(32))
+            card_info['name'] = card_info['name'].replace(chr(160), chr(32))
 
             if card_info['id'] in ['EX1_050', 'EX1_295', 'EX1_620']:
                 card_info['set'] = 'HOF'
