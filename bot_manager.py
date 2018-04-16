@@ -305,7 +305,12 @@ class BotManager():
     def process_user_query(self, msg_info, is_text_for_card_text=False):
         text = msg_info['text']
         user_query = text[2:-2]
-        stat_query, text_query = self.db.parse_query_text(user_query)
+        stat_query, text_query, err = self.db.parse_query_text(user_query)
+        if stat_query is None:
+            ret_text = self._err_code_to_str(err)
+            self.send_msg_pair(MsgPair('simple_txt', ret_text))
+            return
+
         inner_result = None
         if len(stat_query.keys()) > 0:
             inner_result = self.db.query_stat(stat_query)
@@ -319,8 +324,8 @@ class BotManager():
             card_infos = []
 
         if len(card_infos) == 0:
-            ret_text = '%s 에 해당하는 카드를 찾을 수 없습니다.' % (text, )
-            self.send_message(ret_text)
+            ret_text = MsgPair('simple_txt', '%s 에 해당하는 카드를 찾을 수 없습니다.' % (text, ))
+            self.send_msg_pair(ret_text)
         else:
             self.process_card_message(card_infos, user_query)
 
@@ -365,7 +370,12 @@ class BotManager():
             return MsgPair('simple_txt', '= 기호를 찾을 수 없습니다.')
 
         user_query = text[:sep_idx].strip()
-        stat_query, text_query = self.db.parse_query_text(user_query)
+        stat_query, text_query, err = self.db.parse_query_text(user_query)
+        if stat_query is None:
+            ret_text = self._err_code_to_str(err)
+            self.send_msg_pair(MsgPair('simple_txt', ret_text))
+            return None
+
         inner_result = None
         if len(stat_query.keys()) > 0:
             inner_result = self.db.query_stat(stat_query)
@@ -396,7 +406,12 @@ class BotManager():
         user_query = text
         card = None
         if len(user_query) > 0:
-            stat_query, text_query = self.db.parse_query_text(user_query)
+            stat_query, text_query, err = self.db.parse_query_text(user_query)
+            if stat_query is None:
+                ret_text = self._err_code_to_str(err)
+                self.send_msg_pair(MsgPair('simple_txt', ret_text))
+                return None
+
             inner_result = None
             if len(stat_query.keys()) > 0:
                 inner_result = self.db.query_stat(stat_query)
@@ -520,3 +535,10 @@ class BotManager():
             }
             self.file_db = self.file_db.append([pd.DataFrame([inserting_data], columns=file_db_col)], ignore_index=True)
             self.file_db.to_hdf(self.file_db_path, 'df', mode='w', format='table', data_columns=True)
+
+    def _err_code_to_str(self, err_code):
+        ret_text = '알수 없는 에러: %s' % (err_code,)
+        if err_code == 'int_overflow':
+            ret_text = '숫자가 너무 큽니다. 값을 줄여주세요. 에러: %s' % (err_code,)
+
+        return ret_text

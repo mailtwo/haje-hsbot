@@ -251,18 +251,22 @@ class DBConnector(object):
         idx = 0
         is_invalid = False
         while idx < len(split_list):
-            word = split_list[idx]
-            next_word = None if (idx == len(split_list) - 1) else split_list[idx+1]
-            type, value, use_nextword = self._parse_word(split_list, idx)
-            if type == 'none':
+            word_type, value, use_nextword = self._parse_word(split_list, idx)
+
+            if type(value) == int and not (-10000 < value < 10000):
+                return None, None, 'int_overflow'
+            elif type(value) == tuple and (not (-10000 < value[0] < 10000) or not (-10000 < value[1] < 10000)):
+                return None, None, 'int_overflow'
+
+            if word_type == 'none':
                 is_invalid = True
                 break
-            if type == 'end_stat':
+            if word_type == 'end_stat':
                 idx += 1
                 break
 
             # process the special case if the stat is concatenated
-            elif type == 'attackhealth':
+            elif word_type == 'attackhealth':
                 if 'attack' not in stat_query:
                     stat_query['attack'] = [value[0]]
                 else:
@@ -273,10 +277,10 @@ class DBConnector(object):
                     stat_query['health'].append(value[1])
             # the normal case; type should be the database column string
             else:
-                if type not in stat_query:
-                    stat_query[type] = [value]
+                if word_type not in stat_query:
+                    stat_query[word_type] = [value]
                 else:
-                    stat_query[type].append(value)
+                    stat_query[word_type].append(value)
 
             # jump over the next word if the parser consume it already
             idx += (use_nextword + 1)
@@ -295,7 +299,7 @@ class DBConnector(object):
             stat_query = {}
             text_query = self.normalize_text(text, cannot_believe=True)
 
-        return stat_query, text_query
+        return stat_query, text_query, ''
 
     def normalize_text(self, text, cannot_believe=False):
         if cannot_believe:
