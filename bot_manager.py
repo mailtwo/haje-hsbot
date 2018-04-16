@@ -6,6 +6,7 @@ import pandas as pd
 import threading
 import time
 import traceback
+import datetime
 from slackclient import SlackClient
 from db_connector import DBConnector
 
@@ -63,7 +64,7 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '2코 2 3 죽메'
+        # user_query = '10000000000000000000000000000000코'
         # stat_query, text_query = self.db.parse_query_text(user_query)
         # print (stat_query, text_query)
         # inner_result = None
@@ -209,36 +210,40 @@ class BotManager():
         print('Start running...')
         return True
 
-    def file_db_remover_thread(self):
-        remove_target = []
-        for itr, row in self.file_db.iterrows():
-            file_date = row['date']
-            file_id = row['file_id']
-            if file_id == 'None':
-                continue
-            now_time = pd.to_datetime('now')
-            diff = now_time - file_date
-            if diff.total_seconds() >= 3600 * 24 * 1:
-                remove_target.append(row.name)
+    def file_db_remover_thread(self, data_info):
+        while True:
+            remove_target = []
+            for itr, row in self.file_db.iterrows():
+                file_date = row['date']
+                file_id = row['file_id']
+                if file_id == 'None':
+                    continue
+                now_time = pd.to_datetime('now')
+                diff = now_time - file_date
+                if diff.total_seconds() >= 3600 * 24 * 1:
+                    remove_target.append(row.name)
 
-        for file_id in remove_target:
-            result = self.sc.api_call(
-                'files.delete',
-                file=self.file_db.loc[file_id]['file_id']
-            )
+            for file_id in remove_target:
+                result = self.sc.api_call(
+                    'files.delete',
+                    file=self.file_db.loc[file_id]['file_id']
+                )
 
-            self.file_db.drop([file_id], inplace=True)
-        self.file_db.reset_index(drop=True, inplace=True)
-        self.file_db.to_hdf(self.file_db_path, 'df', mode='w', format='table', data_columns=True)
+                self.file_db.drop([file_id], inplace=True)
+            self.file_db.reset_index(drop=True, inplace=True)
+            self.file_db.to_hdf(self.file_db_path, 'df', mode='w', format='table', data_columns=True)
 
-        time.sleep(3600 * 2)
-        t = threading.Thread(target=self.file_db_remover_thread)
-        t.start()
+            for i in range(3600 * 2):
+                if data_info['stop']:
+                    return
+                time.sleep(1)
 
     def run(self):
-        t = threading.Thread(target=self.file_db_remover_thread)
+        data_info = {'stop': False}
+        t = threading.Thread(target=self.file_db_remover_thread, args=(data_info, ))
         t.start()
-        while self.sc.server.connected is True:
+        err = 0
+        while self.sc.server.connected:
             msg_list = self.sc.rtm_read()
             try:
                 for msg_info in msg_list:
@@ -259,10 +264,20 @@ class BotManager():
                 ret_text = '\n'.join(ret_text)
                 msg_pair = MsgPair('simple_txt', ret_text)
                 self.send_msg_pair(msg_pair)
-                with open('error.log', 'w') as f:
+                with open('error.log', 'a+') as f:
+                    f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
                     f.write(ret_text)
                     f.write(traceback.format_exc())
-                sys.exit(1)
+                    f.flush()
+                data_info['stop'] = True
+                t.join()
+                err = 1
+                return err
+
+    def close(self):
+        if self.sc is None:
+            return
+        self.sc = None
 
     def detect_msg_type(self, msg_info):
         if msg_info['type'] != 'message':
