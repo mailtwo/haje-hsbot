@@ -158,10 +158,12 @@ class DBConnector(object):
                     continue
                 for v in v_list:
                     if type(v) == int:
-                        cur_value_query.append('%s == %s' % (k , str(v)))
+                        if -10000 < v < 10000:
+                            cur_value_query.append('%s == %s' % (k , str(v)))
                     else:
                         cur_value_query.append('%s == \"%s\"' % (k , v))
-                query_str.append('(' + (' | '.join(cur_value_query)) + ')')
+                if len(cur_value_query) > 0:
+                    query_str.append('(' + (' | '.join(cur_value_query)) + ')')
         # print (stat_query)
         if len(query_str) > 0:
             query_str = ' & '.join(query_str)
