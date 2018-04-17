@@ -1,4 +1,5 @@
 import os
+import re
 import pandas as pd
 
 card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
@@ -85,6 +86,52 @@ class DBConnector(object):
             expansions.append('expansion == \"%s\"' % (exp_name, ))
         expansion_query_str = ' | '.join(expansions)
         self.wild_query_filter = '( ' + expansion_query_str + ' )'
+
+        self.parse_word_list = [
+            (self.hero_alias.keys(), 'hero', lambda word, word_len:self.hero_alias[word]),
+            ('([0-9]+)코(스트)?', 'cost', lambda re_obj: int(re_obj.group(1))),
+            ('([0-9]+)[ /]([0-9]+)', 'attackhealth', lambda re_obj: (int(re_obj.group(1)), int(re_obj.group(2)))),
+            ('([0-9]+)공(격력)?', 'attack', lambda re_obj: int(re_obj.group(1))),
+            ('([0-9]+)체(력)?', 'health', lambda re_obj: int(re_obj.group(1))),
+            (hs_races, 'race', lambda word: word),
+            (hs_expansion_group, 'expansion_group', lambda word: word),
+            (self.type_alias.keys(), 'type', lambda word: self.type_alias[word]),
+            (self.rarity_alias.keys(), 'rarity', lambda word: self.rarity_alias[word]),
+            (';', 'end_stat', lambda word: word),
+            (hs_keywords, 'keyword', lambda word: word),
+            (self.keyword_alias.keys(), 'keyword', lambda word: self.keyword_alias[word]),
+            (self.expansion_alias.keys(), 'expansion', lambda word: self.expansion_alias[word]),
+        ]
+        for i in range(len(self.parse_word_list)):
+            cond, word_type, ret_fun = self.parse_word_list[i]
+            if type(cond) == list:
+                cond_fun = self._compare_word_list_gen(cond)
+                cond_type = 'list'
+            elif type(cond) == str:
+                cond_fun = self._compare_re_gen(cond)
+                cond_type = 're'
+            else:
+                assert False
+            self.parse_word_list[i] = (cond_fun, cond_type, word_type, ret_fun)
+
+    def _compare_word_list_gen(self, cond_list):
+        def _inner_fun(word):
+            for cond in cond_list:
+                if len(word) < len(cond):
+                    continue
+                if word[:len(cond)] != cond:
+                    continue
+                return True, cond
+            return False, word
+        return _inner_fun
+
+    def _compare_re_gen(self, re_str, force_at_start=True):
+        regex = re.compile(('^' if force_at_start else '')+re_str + '(.*)$')
+        def _inner_fun(word):
+            match_obj = regex.search(word)
+            return match_obj
+        return _inner_fun
+
 
     # load DataFrame type database from the path
     def load(self, card_db_path, alias_db_path):
@@ -242,6 +289,10 @@ class DBConnector(object):
         stat_query = {}
         text_query = ''
 
+        parse_end = False
+        while not parse_end:
+            token_info, parse_end, err_msg = self._parse_word_test(text)
+
         if text.find(';') >= 0:
             semi_pos = text.find(';')
             text = text[:semi_pos] + ' ' + text[semi_pos] + ' ' + text[semi_pos+1:]
@@ -356,6 +407,19 @@ class DBConnector(object):
         alias_path = os.path.join('database', 'alias.pd')
         self.alias_db.to_hdf(alias_path, 'df', mode='w', format='table', data_columns=True)
 
+    def _parse_word_test(self, text):
+        token_info = {
+            'type': '',
+            'value': None
+        }
+        for cond_fun, cond_type, word_type, ret_fun in self.parse_word_list:
+            if cond_type == 'list':
+                res, ret_data = cond_fun(text)
+                if res:
+                    token_info['type'] = word_type
+                    token_info['value'] = ret_fun(ret_data)
+
+
     # detect database column and its query value of a word
     # next word is used to determine the pair number stream (for attack health slots)
     # also it returns use_nextword which becomes true if it 'consumes' the next word while parsing the word
@@ -363,6 +427,8 @@ class DBConnector(object):
     def _parse_word(self, word_list, word_idx):
         word = word_list[word_idx]
         next_words = word_list[word_idx:]
+
+
 
         ret_type = 'none'
         ret_value = None
