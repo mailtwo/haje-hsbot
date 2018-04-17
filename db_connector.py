@@ -88,19 +88,19 @@ class DBConnector(object):
         self.wild_query_filter = '( ' + expansion_query_str + ' )'
 
         self.parse_word_list = [
-            (self.hero_alias.keys(), 'hero', lambda word, word_len:self.hero_alias[word]),
+            (list(self.hero_alias.keys()), 'hero', lambda word: self.hero_alias[word]),
             ('([0-9]+)코(스트)?', 'cost', lambda re_obj: int(re_obj.group(1))),
             ('([0-9]+)[ /]([0-9]+)', 'attackhealth', lambda re_obj: (int(re_obj.group(1)), int(re_obj.group(2)))),
             ('([0-9]+)공(격력)?', 'attack', lambda re_obj: int(re_obj.group(1))),
             ('([0-9]+)체(력)?', 'health', lambda re_obj: int(re_obj.group(1))),
             (hs_races, 'race', lambda word: word),
             (hs_expansion_group, 'expansion_group', lambda word: word),
-            (self.type_alias.keys(), 'type', lambda word: self.type_alias[word]),
-            (self.rarity_alias.keys(), 'rarity', lambda word: self.rarity_alias[word]),
-            (';', 'end_stat', lambda word: word),
+            (list(self.type_alias.keys()), 'type', lambda word: self.type_alias[word]),
+            (list(self.rarity_alias.keys()), 'rarity', lambda word: self.rarity_alias[word]),
+            ([';'], 'end_stat', lambda word: word),
             (hs_keywords, 'keyword', lambda word: word),
-            (self.keyword_alias.keys(), 'keyword', lambda word: self.keyword_alias[word]),
-            (self.expansion_alias.keys(), 'expansion', lambda word: self.expansion_alias[word]),
+            (list(self.keyword_alias.keys()), 'keyword', lambda word: self.keyword_alias[word]),
+            (list(self.expansion_alias.keys()), 'expansion', lambda word: self.expansion_alias[word]),
         ]
         for i in range(len(self.parse_word_list)):
             cond, word_type, ret_fun = self.parse_word_list[i]
@@ -121,15 +121,19 @@ class DBConnector(object):
                     continue
                 if word[:len(cond)] != cond:
                     continue
-                return True, cond
-            return False, word
+                return True, cond, len(cond)
+            return False, word, 0
         return _inner_fun
 
     def _compare_re_gen(self, re_str, force_at_start=True):
         regex = re.compile(('^' if force_at_start else '')+re_str + '(.*)$')
         def _inner_fun(word):
             match_obj = regex.search(word)
-            return match_obj
+            if match_obj is not None:
+                word_len = len(word) - len(match_obj.group(len(match_obj.groups())))
+            else:
+                word_len = 0
+            return match_obj is not None, match_obj,word_len
         return _inner_fun
 
 
@@ -141,7 +145,7 @@ class DBConnector(object):
         self.alias_db = pd.read_hdf(alias_db_path)
 
         #self.mem_db = self._construct_mem_db(self.card_db)
-        self.mem_db = self._construct_mem_db(self.card_db.query(self.standard_query_str))
+        self.mem_db = self._construct_mem_db(self.card_db)
         self.alias_mem_db = self._construct_alias_mem_db(self.alias_db)
         self.keyword_db = {}
         for keyword in hs_keywords:
@@ -190,11 +194,13 @@ class DBConnector(object):
         assert(self.card_db is not None)
         query_str = []
         if 'expansion' not in stat_query:
-            stat_query['expansion'] = []
-            if ('expansion_group' not in stat_query) or ('정규' in stat_query['expansion_group']):
-                stat_query['expansion'] += self.standard_filter
+            expansion = []
+            if ('expansion_group' in stat_query) and ('정규' in stat_query['expansion_group']):
+                expansion += self.standard_filter
             if ('expansion_group' in stat_query) and ('야생' in stat_query['expansion_group']):
-                stat_query['expansion'] += self.wild_filter
+                expansion += self.wild_filter
+            if len(expansion) > 0:
+                stat_query['expansion'] = expansion
         if ('race' in stat_query) and ('모두' not in stat_query['race']):
             stat_query['race'].append('모두')
 
@@ -211,6 +217,15 @@ class DBConnector(object):
                         cur_value_query.append('%s == \"%s\"' % (k , v))
                 if len(cur_value_query) > 0:
                     query_str.append('(' + (' | '.join(cur_value_query)) + ')')
+            elif k == 'attackhealth':
+                cur_value_query = []
+                for v in v_list:
+                    attack, health = v
+                    cur_value_query.append('( %s == %s & %s == %s )' % ('attack', attack, 'health', health))
+                if len(cur_value_query) > 0:
+                    query_str.append('(' + (' | '.join(cur_value_query)) + ')')
+
+
         # print (stat_query)
         if len(query_str) > 0:
             query_str = ' & '.join(query_str)
@@ -219,6 +234,7 @@ class DBConnector(object):
             ret = self.card_db.query(query_str)
         else:
             ret = self.card_db
+
         if 'keyword' in stat_query:
             for each_keyword in stat_query['keyword']:
                 card_list = self.keyword_db[each_keyword]
@@ -226,120 +242,147 @@ class DBConnector(object):
 
         return ret
 
-    def query_text(self, query_table, text_query):
+    def query_text(self, query_table, stat_query, text_query):
         text_query = text_query.strip()
         if len(text_query) == 0:
             if query_table is None:
-                return pd.DataFrame(columns=card_db_col)
+                return pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col)
             query_table = query_table.drop_duplicates(subset='web_id', keep='last')
-            return query_table
-
-        if query_table is None:
-            assert(self.card_db is not None)
-            cur_memdb = self.mem_db
-            cur_alias_mem_db = self.alias_mem_db
+            std_df = pd.DataFrame(columns=query_table.columns)
+            wild_df = pd.DataFrame(columns=query_table.columns)
         else:
-            cur_memdb = self._construct_mem_db(query_table)
-            #joined = pd.merge(self.alias_db, query_table[['web_id']], on='web_id', how='left')
-            joined = self.alias_db.join(query_table[['web_id']].set_index('web_id'), how='inner', on='web_id')
-            cur_alias_mem_db = self._construct_alias_mem_db(joined)
+            if query_table is None:
+                assert(self.card_db is not None)
+                cur_memdb = self.mem_db
+                cur_alias_mem_db = self.alias_mem_db
+            else:
+                cur_memdb = self._construct_mem_db(query_table)
+                #joined = pd.merge(self.alias_db, query_table[['web_id']], on='web_id', how='left')
+                joined = self.alias_db.join(query_table[['web_id']].set_index('web_id'), how='inner', on='web_id')
+                cur_alias_mem_db = self._construct_alias_mem_db(joined)
 
-        name_list = cur_memdb['name']
-        ret_key = []
-        exactly_match = False
-        for idx, each_name in enumerate(name_list):
-            if text_query == each_name:
-                ret_key = [cur_memdb['key'][idx]]
-                exactly_match = True
-                break
-            elif text_query in each_name:
-                ret_key.append(cur_memdb['key'][idx])
-
-        if not exactly_match:
-            name_list = cur_alias_mem_db['name']
+            name_list = cur_memdb['name']
+            ret_key = []
+            exactly_match = False
             for idx, each_name in enumerate(name_list):
-                if text_query in each_name:
-                    ret_key.append(cur_alias_mem_db['web_id'][idx])
+                if text_query == each_name:
+                    ret_key = [cur_memdb['key'][idx]]
+                    exactly_match = True
+                    break
+                elif text_query in each_name:
+                    ret_key.append(cur_memdb['key'][idx])
 
-        query_table = self._faster_isin(self.card_db, ret_key)
-        query_table.drop_duplicates(subset='web_id', keep='last', inplace=True)
-        return query_table
+            if not exactly_match:
+                name_list = cur_alias_mem_db['name']
+                for idx, each_name in enumerate(name_list):
+                    if text_query in each_name:
+                        ret_key.append(cur_alias_mem_db['web_id'][idx])
 
-    def query_text_in_card_text(self, query_table, text_query):
+            query_table = self._faster_isin(self.card_db, ret_key)
+            query_table.drop_duplicates(subset='web_id', keep='last', inplace=True)
+            std_df = pd.DataFrame(columns=query_table.columns)
+            wild_df = pd.DataFrame(columns=query_table.columns)
+
+        if not query_table.empty:
+            if ('expansion_group' not in stat_query) and ('expansion' not in stat_query):
+                df_group = query_table.groupby('expansion')
+                std_list = [df_group.get_group(x) for x in self.standard_filter if x in df_group.groups]
+                wild_list = [df_group.get_group(x) for x in self.wild_filter if x in df_group.groups]\
+
+                if len(std_list) > 0:
+                    std_df = pd.concat(std_list)
+                if len(wild_list) > 0:
+                    wild_df = pd.concat(wild_list)
+                query_table = std_df if not std_df.empty else wild_df
+
+        return query_table, std_df, wild_df
+
+    def query_text_in_card_text(self, query_table, stat_query, text_query):
         text_query = text_query.strip()
-        if query_table is None:
-            assert(self.card_db is not None)
-            cur_memdb = self.mem_db
-        else:
-            cur_memdb = self._construct_mem_db(query_table)
-
         if len(text_query) == 0:
-            return query_table
+            if query_table is None:
+                return pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col)
+            query_table = query_table.drop_duplicates(subset='web_id', keep='last')
+            std_df = pd.DataFrame(columns=query_table.columns)
+            wild_df = pd.DataFrame(columns=query_table.columns)
+        else:
+            if query_table is None:
+                assert(self.card_db is not None)
+                cur_memdb = self.mem_db
+            else:
+                cur_memdb = self._construct_mem_db(query_table)
 
-        text_list = cur_memdb['norm_text']
-        ret_key = []
-        for idx, each_text in enumerate(text_list):
-            if text_query in each_text:
-                ret_key.append(cur_memdb['key'][idx])
+            if len(text_query) == 0:
+                return query_table
 
-        return self._faster_isin(self.card_db, ret_key)
+            text_list = cur_memdb['norm_text']
+            ret_key = []
+            for idx, each_text in enumerate(text_list):
+                if text_query in each_text:
+                    ret_key.append(cur_memdb['key'][idx])
+
+            query_table = self._faster_isin(self.card_db, ret_key)
+            query_table.drop_duplicates(subset='web_id', keep='last', inplace=True)
+            std_df = pd.DataFrame(columns=query_table.columns)
+            wild_df = pd.DataFrame(columns=query_table.columns)
+
+        if not query_table.empty:
+            if ('expansion_group' not in stat_query) and ('expansion' not in stat_query):
+                df_group = query_table.groupby('expansion')
+                std_list = [df_group.get_group(x) for x in self.standard_filter if x in df_group.groups]
+                wild_list = [df_group.get_group(x) for x in self.wild_filter if x in df_group.groups]\
+
+                if len(std_list) > 0:
+                    std_df = pd.concat(std_list)
+                if len(wild_list) > 0:
+                    wild_df = pd.concat(wild_list)
+                query_table = std_df if not std_df.empty else wild_df
+
+        return query_table, std_df, wild_df
 
     # parse the text user types and return its stat query and text query
-    def parse_query_text(self, text):
+    def parse_user_request(self, text):
+        orig_text = text
+        text = re.sub('\s+', ' ', text).strip()
         stat_query = {}
         text_query = ''
 
         parse_end = False
-        while not parse_end:
-            token_info, parse_end, err_msg = self._parse_word_test(text)
-
-        if text.find(';') >= 0:
-            semi_pos = text.find(';')
-            text = text[:semi_pos] + ' ' + text[semi_pos] + ' ' + text[semi_pos+1:]
-        split_list = text.strip().split()
-        split_list = [w.strip() for w in split_list]
-
-        idx = 0
         is_invalid = False
-        while idx < len(split_list):
-            word_type, value, use_nextword = self._parse_word(split_list, idx)
+        while not parse_end:
+            if len(text) == 0:
+                break
+            res, token_info, text, err_msg = self._parse_word_test(text)
+            text = text.strip()
+            if err_msg is not None:
+                return None, None, err_msg
 
-            if type(value) == int and not (-10000 < value < 10000):
-                return None, None, 'int_overflow'
-            elif type(value) == tuple and (not (-10000 < value[0] < 10000) or not (-10000 < value[1] < 10000)):
-                return None, None, 'int_overflow'
+            word_type = token_info['type']
+            value = token_info['value']
 
-            if word_type == 'none':
+            if not res:
                 is_invalid = True
                 break
             if word_type == 'end_stat':
-                idx += 1
+                text_query = self.normalize_text(text, cannot_believe=True)
                 break
 
             # process the special case if the stat is concatenated
-            elif word_type == 'attackhealth':
-                if 'attack' not in stat_query:
-                    stat_query['attack'] = [value[0]]
-                else:
-                    stat_query['attack'].append(value[0])
-                if 'health' not in stat_query:
-                    stat_query['health'] = [value[1]]
-                else:
-                    stat_query['health'].append(value[1])
+            # elif word_type == 'attackhealth':
+            #     if 'attack' not in stat_query:
+            #         stat_query['attack'] = [value[0]]
+            #     else:
+            #         stat_query['attack'].append(value[0])
+            #     if 'health' not in stat_query:
+            #         stat_query['health'] = [value[1]]
+            #     else:
+            #         stat_query['health'].append(value[1])
             # the normal case; type should be the database column string
             else:
                 if word_type not in stat_query:
                     stat_query[word_type] = [value]
                 else:
                     stat_query[word_type].append(value)
-
-            # jump over the next word if the parser consume it already
-            idx += (use_nextword + 1)
-
-        # remove space, \', \, in the text query if it exists
-        if idx < len(split_list):
-            text_query = ''.join(split_list[idx:])
-            text_query = self.normalize_text(text_query, cannot_believe=True)
 
         # Here, if user query include any non-empty text query,
         # the program thinks the whole user query is for the text query
@@ -348,9 +391,9 @@ class DBConnector(object):
         # ex) 퀘스트 중인 모험가 -> {keyword: 퀘스트} "중인 모험가" (X) "퀘스트 중인 모험가" (O)
         if is_invalid:
             stat_query = {}
-            text_query = self.normalize_text(text, cannot_believe=True)
+            text_query = self.normalize_text(orig_text, cannot_believe=True)
 
-        return stat_query, text_query, ''
+        return stat_query, text_query, None
 
     def normalize_text(self, text, cannot_believe=False):
         if cannot_believe:
@@ -412,119 +455,16 @@ class DBConnector(object):
             'type': '',
             'value': None
         }
+        res = False
+        word_len = 0
+        err_msg = None
         for cond_fun, cond_type, word_type, ret_fun in self.parse_word_list:
-            if cond_type == 'list':
-                res, ret_data = cond_fun(text)
-                if res:
-                    token_info['type'] = word_type
-                    token_info['value'] = ret_fun(ret_data)
-
-
-    # detect database column and its query value of a word
-    # next word is used to determine the pair number stream (for attack health slots)
-    # also it returns use_nextword which becomes true if it 'consumes' the next word while parsing the word
-    # return 'none', None, False if it is not part of the database column types
-    def _parse_word(self, word_list, word_idx):
-        word = word_list[word_idx]
-        next_words = word_list[word_idx:]
-
-
-
-        ret_type = 'none'
-        ret_value = None
-        use_nextword = 0
-
-        if word in self.hero_alias.keys():
-            ret_type = 'hero'
-            ret_value = self.hero_alias[word]
-        elif (word[-1] == '코' and  word[:-1].isdigit()):
-            ret_type = 'cost'
-            ret_value = int(word[:-1].strip())
-        elif (word[-3:] == '코스트' and  word[:-3].isdigit()):
-            ret_type = 'cost'
-            ret_value = int(word[:-3].strip())
-        elif word.isdigit() and (len(next_words) > 1 is not None and next_words[1].isdigit()):
-            attack = int(word)
-            health = int(next_words[1])
-            ret_type = 'attackhealth'
-            ret_value = (attack, health)
-            use_nextword = 1
-        elif (word[-1] == '공' and word[:-1].isdigit()):
-            attack = int(word[:-1])
-            ret_type = 'attack'
-            ret_value = attack
-        elif (word[-3:] == '공격력' and word[:-3].isdigit()):
-            attack = int(word[:-3])
-            ret_type = 'attack'
-            ret_value = attack
-        elif (word[-1] == '체' and word[:-1].isdigit()):
-            health = int(word[:-1])
-            ret_type = 'health'
-            ret_value = health
-        elif (word[-2:] == '체력' and word[:-2].isdigit()):
-            health = int(word[:-2])
-            ret_type = 'health'
-            ret_value = health
-        elif word in hs_races:
-            ret_type = 'race'
-            ret_value = word
-        elif word in hs_expansion_group:
-            ret_type = 'expansion_group'
-            ret_value = word
-
-        if ret_type != 'none':
-            return ret_type, ret_value, use_nextword
-
-        if '/' in word:
-            slash_pos = word.index('/')
-            if word[:slash_pos].strip().isdigit() and word[slash_pos+1:].strip().isdigit():
-                attack = int(word[:slash_pos].strip())
-                health = int(word[slash_pos+1:].strip().strip())
-                ret_type = 'attackhealth'
-                ret_value = (attack, health)
-
-        elif word in self.type_alias.keys():
-            ret_type = 'type'
-            ret_value = self.type_alias[word]
-        elif word in self.rarity_alias.keys():
-            ret_type = 'rarity'
-            ret_value = self.rarity_alias[word]
-        elif word == ';':
-            ret_type = 'end_stat'
-            ret_value = None
-
-        result = self._parse_from_list(hs_keywords, next_words)
-        if result is not None:
-            return ('keyword', result[0], result[1])
-
-        result = self._parse_from_list(self.keyword_alias.keys(), next_words)
-        if result is not None:
-            return ('keyword', self.keyword_alias[result[0]], result[1])
-        result = self._parse_from_list(self.expansion_alias.keys(), next_words)
-        if result is not None:
-            return ('expansion', self.expansion_alias[result[0]], result[1])
-
-        return ret_type, ret_value, use_nextword
-
-    def _parse_from_list(self, compare_list, next_words):
-        found = None
-        found_sp = None
-        found_flag = False
-        for found in compare_list:
-            found_sp = found.split(' ')
-            if len(next_words) < len(found_sp):
-                continue
-            compare = next_words[:len(found_sp)]
-            found_flag = True
-            for c_idx, c in enumerate(compare):
-                if c != found_sp[c_idx]:
-                    found_flag = False
-                    break
-            if found_flag:
+            res, ret_data, word_len = cond_fun(text)
+            if res:
+                token_info['type'] = word_type
+                token_info['value'] = ret_fun(ret_data)
                 break
-        if found_flag:
-            ret_value = found
-            use_nextword = len(found_sp) - 1
-            return ret_value, use_nextword
-        else:
-            return None
+        if type(token_info['value']) == int and not(-10000 < token_info['value'] < 10000):
+            res = False
+            err_msg = 'int_overflow'
+        return res, token_info, text[word_len:], err_msg

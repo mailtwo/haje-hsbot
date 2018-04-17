@@ -64,17 +64,18 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '10000000000000000000000000000000코'
-        # stat_query, text_query = self.db.parse_query_text(user_query)
-        # print (stat_query, text_query)
+        # user_query = '1/1 2/2 3/3 4/4 5/5'
+        # stat_query, text_query, err_msg = self.db.parse_user_request(user_query)
+        # print (stat_query, text_query, err_msg)
         # inner_result = None
-        # if len(stat_query.keys()) > 0:
-        #     inner_result = self.db.query_stat(stat_query)
-        #     print(inner_result.shape[0])
-        # card = self.db.query_text(inner_result, text_query)
-        # print(card.shape[0])
-        # for idx, row in card.iterrows():
-        #     print (row)
+        # if err_msg is None:
+        #     if len(stat_query.keys()) > 0:
+        #         inner_result = self.db.query_stat(stat_query)
+        #         print(inner_result.shape[0])
+        #     card, std_df, wild_df = self.db.query_text(inner_result, stat_query, text_query)
+        #     print(card.shape[0], std_df.shape[0], wild_df.shape[0])
+        #     for idx, row in card.iterrows():
+        #         print (row)
         # return
         # self.process_bot_instruction({'text': '하스봇! 삭제 1'})
 
@@ -120,9 +121,22 @@ class BotManager():
 
         return '```' + cur_help_dict['text'] + '```'
 
-    def process_card_message(self, card_infos, query_text):
-        if len(card_infos) == 1:
-            card = card_infos[0]
+    def process_card_message(self, query_text, cards, std_df, wild_df):
+        add_text = None
+        if not std_df.empty and not wild_df.empty:
+            add_text = '그 외 %d 장의 야생 카드들이 검색되었습니다' % (wild_df.shape[0], )
+            if wild_df.shape[0] <= 5:
+                ret_text = []
+                for idx in range(wild_df.shape[0]):
+                    card = wild_df.iloc[idx]
+                    ret_text.append('<%s|%s>' % (card['detail_url'],
+                                                '[' + card['orig_name'] + ']'))
+                add_text = add_text + ': ' + ', '.join(ret_text)
+            else:
+                add_text += '.'
+
+        if cards.shape[0] == 1:
+            card = cards.iloc[0]
             stat_text = ''
             if card['type'] == '하수인' or card['type'] == '무기':
                 stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
@@ -138,31 +152,46 @@ class BotManager():
                 'title_link': card['detail_url'],
                 'image_url': card['img_url'],
             }
+            field_info = []
             if len(card['card_text']) > 0:
-                field_info = [
+                field_info.append(
                     {
                         'title': '효과',
                         'value': card['card_text']
                     }
-                ]
+                )
+            if len(field_info) > 0:
                 card_info['fields'] = field_info
-            self.send_attach_message([card_info])
 
-        elif len(card_infos) <= 5:
+            msg = [card_info]
+            if add_text is not None:
+                add_info = {
+                    'fields': [{
+                        'value': add_text
+                    }]
+                }
+                msg.append(add_info)
+            self.send_attach_message(msg)
+
+        elif cards.shape[0] <= 5:
             ret_text = []
-            for idx in range(len(card_infos)):
-                card = card_infos[idx]
+            for idx in range(cards.shape[0]):
+                card = cards.iloc[idx]
                 ret_text.append('<%s|%s>' % (card['detail_url'],
                                             '[' + card['orig_name'] + ']'))
             ret_text = ', '.join(ret_text)
+            if add_text is not None:
+                ret_text = ret_text + '\n' + add_text
             self.send_message(ret_text)
 
         else:
             ret_text = []
             #ret_text.append('%d 건의 결과가 검색되었습니다.' % (len(card_infos), ))
-            each_card_len, max_str_len = get_namelist_length([card['orig_name'] for card in card_infos])
+            each_card_len, max_str_len = get_namelist_length(list(cards['orig_name']))
 
-            for idx, card in enumerate(card_infos):
+            for idx in range(cards.shape[0]):
+                card = cards.iloc[idx]
+                stat_text = ''
                 if card['type'] == '하수인' or card['type'] == '무기':
                     stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
                 elif card['type'] == '주문' or card['type'] == '영웅 교체':
@@ -172,7 +201,9 @@ class BotManager():
                 ret_text.append(cur_text)
 
             ret_text = '\n'.join(ret_text)
-            self.upload_snippet(ret_text, raw_title='[%s] - 검색결과 %d개' % (query_text, len(card_infos)))
+            if add_text is not None:
+                ret_text = ret_text + '\n\n' + add_text
+            self.upload_snippet(ret_text, raw_title='[%s] - 검색결과 %d개' % (query_text, cards.shape[0]))
 
     def load_bot_token(self, path):
         if self.mode == 'debug':
@@ -305,7 +336,7 @@ class BotManager():
     def process_user_query(self, msg_info, is_text_for_card_text=False):
         text = msg_info['text']
         user_query = text[2:-2]
-        stat_query, text_query, err = self.db.parse_query_text(user_query)
+        stat_query, text_query, err = self.db.parse_user_request(user_query)
         if stat_query is None:
             ret_text = self._err_code_to_str(err)
             self.send_msg_pair(MsgPair('simple_txt', ret_text))
@@ -315,19 +346,15 @@ class BotManager():
         if len(stat_query.keys()) > 0:
             inner_result = self.db.query_stat(stat_query)
         if not is_text_for_card_text:
-            card = self.db.query_text(inner_result, text_query)
+            cards, std_df, wild_df = self.db.query_text(inner_result, stat_query, text_query)
         else:
-            card = self.db.query_text_in_card_text(inner_result, text_query)
-        if card is not None:
-            card_infos = [row for idx, row in card.iterrows()]
-        else:
-            card_infos = []
+            cards, std_df, wild_df = self.db.query_text_in_card_text(inner_result, stat_query, text_query)
 
-        if len(card_infos) == 0:
+        if cards.empty:
             ret_text = MsgPair('simple_txt', '%s 에 해당하는 카드를 찾을 수 없습니다.' % (text, ))
             self.send_msg_pair(ret_text)
         else:
-            self.process_card_message(card_infos, user_query)
+            self.process_card_message(user_query, cards, std_df, wild_df)
 
     def process_bot_instruction(self, msg_info):
         text = msg_info['text']
@@ -370,7 +397,7 @@ class BotManager():
             return MsgPair('simple_txt', '= 기호를 찾을 수 없습니다.')
 
         user_query = text[:sep_idx].strip()
-        stat_query, text_query, err = self.db.parse_query_text(user_query)
+        stat_query, text_query, err = self.db.parse_user_request(user_query)
         if stat_query is None:
             ret_text = self._err_code_to_str(err)
             self.send_msg_pair(MsgPair('simple_txt', ret_text))
@@ -380,7 +407,7 @@ class BotManager():
         if len(stat_query.keys()) > 0:
             inner_result = self.db.query_stat(stat_query)
 
-        cards = self.db.query_text(inner_result, text_query)
+        cards, _, _ = self.db.query_text(inner_result, stat_query, text_query)
         card_alias = self.db.normalize_text(text[sep_idx + 1:].strip(), cannot_believe=True)
         if len(card_alias) == 0:
             return MsgPair('simple_txt', '별명을 작성해주세요.')
@@ -406,7 +433,7 @@ class BotManager():
         user_query = text
         card = None
         if len(user_query) > 0:
-            stat_query, text_query, err = self.db.parse_query_text(user_query)
+            stat_query, text_query, err = self.db.parse_user_request(user_query)
             if stat_query is None:
                 ret_text = self._err_code_to_str(err)
                 self.send_msg_pair(MsgPair('simple_txt', ret_text))
@@ -415,7 +442,7 @@ class BotManager():
             inner_result = None
             if len(stat_query.keys()) > 0:
                 inner_result = self.db.query_stat(stat_query)
-            cards = self.db.query_text(inner_result, text_query)
+            cards, _, _ = self.db.query_text(inner_result, stat_query, text_query)
             if cards.shape[0] == 0:
                 return MsgPair('simple_txt', '[%s] 에 해당하는 카드를 찾을 수 없습니다.' % (user_query,))
             elif cards.shape[0] > 1:
