@@ -1,6 +1,7 @@
 import sys
 import time
 import datetime
+import traceback
 from bot_manager import BotManager, MsgPair
 
 def run_program(mode):
@@ -50,8 +51,19 @@ def main():
             print('Invalid mode %s: should be \'debug\' or \'release\'' % (mode, ))
             return
     print('Mode: %s' % (mode, ))
-    ret_code = run_program(mode)
-    print('Return code: %d. Terminate program...' % (ret_code, ))
+    try:
+        ret_code = run_program(mode)
+        print('Return code: %d. Terminate program...' % (ret_code, ))
+    except Exception as e:
+        ret_text = []
+        ret_text.append(str(sys.exc_info()[0]))
+        ret_text = '\n'.join(ret_text)
+        with open('critical_error.log', 'a+') as f:
+            f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()),))
+            f.write('Exception occurred while exception handling!\n')
+            f.write(ret_text)
+            f.write(traceback.format_exc())
+            f.flush()
 
 
 if __name__ == '__main__':

@@ -55,6 +55,7 @@ class BotManager():
         self.version = 'V1.1.0'
         self.sc = None
         self.channel_id = None
+        self.filter_channel = None
         self.slack_token = None
         with open('help.txt', 'r', encoding='utf-8') as f:
             self.help_message = self._read_help_file(f)
@@ -123,17 +124,23 @@ class BotManager():
 
     def process_card_message(self, query_text, cards, std_df, wild_df):
         add_text = None
+        add_text_wo_url = None
         if not std_df.empty and not wild_df.empty:
-            add_text = '그 외 %d 장의 야생 카드들이 검색되었습니다' % (wild_df.shape[0], )
+            add_text = '그 외 %d 장의 야생 카드%s 검색되었습니다' % (wild_df.shape[0], ('가' if wild_df.shap[0] == 1 else '들이'))
+            add_text_wo_url = add_text
             if wild_df.shape[0] <= 5:
                 ret_text = []
+                ret_text_wo_url = []
                 for idx in range(wild_df.shape[0]):
                     card = wild_df.iloc[idx]
                     ret_text.append('<%s|%s>' % (card['detail_url'],
                                                 '[' + card['orig_name'] + ']'))
+                    ret_text_wo_url.append( '[' + card['orig_name'] + ']')
                 add_text = add_text + ': ' + ', '.join(ret_text)
+                add_text_wo_url = add_text_wo_url + ': ' + ', '.join(ret_text_wo_url)
             else:
                 add_text += '.'
+                add_text_wo_url += '.'
 
         if cards.shape[0] == 1:
             card = cards.iloc[0]
@@ -201,8 +208,8 @@ class BotManager():
                 ret_text.append(cur_text)
 
             ret_text = '\n'.join(ret_text)
-            if add_text is not None:
-                ret_text = ret_text + '\n\n' + add_text
+            if add_text_wo_url is not None:
+                ret_text = ret_text + '\n\n' + add_text_wo_url
             self.upload_snippet(ret_text, raw_title='[%s] - 검색결과 %d개' % (query_text, cards.shape[0]))
 
     def load_bot_token(self, path):
@@ -225,14 +232,15 @@ class BotManager():
             print('Channel: %s (%s)' % (target_channel_name, str(channel_id)))
 
         self.channel_id = channel_id
+        self.filter_channel = channel_id
         self.slack_token = token_id
         return True
-    
+
     def connect(self):
         assert self.slack_token is not None
         if self.sc is None:
             self.sc = SlackClient(self.slack_token)
-            
+
         if not self.sc.rtm_connect():
             print('Error while sc.rtm_connect()')
             return False
@@ -288,18 +296,32 @@ class BotManager():
                     elif msg_type == MSG_TYPE['insert_alias']:
                         msg_pair = self.process_insert_alias(msg_info['text'][2:-2])
                         self.send_msg_pair(msg_pair)
-            except Exception as e:
+            except ConnectionAbortedError as e:
                 ret_text = []
                 ret_text.append('오류 발생')
                 ret_text.append(str(sys.exc_info()[0]))
                 ret_text = '\n'.join(ret_text)
-                msg_pair = MsgPair('simple_txt', ret_text)
-                self.send_msg_pair(msg_pair)
                 with open('error.log', 'a+') as f:
                     f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
                     f.write(ret_text)
                     f.write(traceback.format_exc())
                     f.flush()
+                data_info['stop'] = True
+                t.join()
+                err = 1
+                return err
+            except Exception as e:
+                ret_text = []
+                ret_text.append('오류 발생')
+                ret_text.append(str(sys.exc_info()[0]))
+                ret_text = '\n'.join(ret_text)
+                with open('error.log', 'a+') as f:
+                    f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
+                    f.write(ret_text)
+                    f.write(traceback.format_exc())
+                    f.flush()
+                msg_pair = MsgPair('simple_txt', ret_text)
+                self.send_msg_pair(msg_pair)
                 data_info['stop'] = True
                 t.join()
                 err = 1
@@ -315,7 +337,7 @@ class BotManager():
             return MSG_TYPE['invalid']
         if 'user' not in msg_info or msg_info['user'][0] != 'U':
             return MSG_TYPE['invalid']
-        if msg_info['channel'] != self.channel_id:
+        if msg_info['channel'] != self.filter_channel:
             if msg_info['channel'][:2] == 'DA':
                 text = msg_info['text']
                 if text[:4] == '하스봇!':
