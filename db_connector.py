@@ -318,8 +318,8 @@ class DBConnector(object):
             ret = self.card_db
 
         if 'keyword' in stat_query:
-            for each_keyword in stat_query['keyword']:
-                card_list = self.keyword_db[each_keyword]
+            for token in stat_query['keyword']:
+                card_list = self.keyword_db[token['value']]
                 ret = self._faster_isin(ret, card_list)
 
         return ret

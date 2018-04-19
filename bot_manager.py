@@ -65,7 +65,7 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '!2~4코'
+        # user_query = '광풍'
         # stat_query, text_query, err_msg = self.db.parse_user_request(user_query)
         # print (stat_query, text_query, err_msg)
         # inner_result = None
@@ -320,7 +320,7 @@ class BotManager():
                 ret_text.append('오류 발생')
                 ret_text.append(str(sys.exc_info()[0]))
                 ret_text = '\n'.join(ret_text)
-                with open('error.log', 'a+') as f:
+                with open('error.log', 'a+', encoding="utf-8") as f:
                     f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
                     f.write(ret_text)
                     f.write(traceback.format_exc())
