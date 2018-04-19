@@ -65,7 +65,7 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '1/1 2/2 3/3 4/4 5/5'
+        # user_query = '!2~4코'
         # stat_query, text_query, err_msg = self.db.parse_user_request(user_query)
         # print (stat_query, text_query, err_msg)
         # inner_result = None
@@ -309,7 +309,8 @@ class BotManager():
                 data_info['stop'] = True
                 t.join()
                 err = 1
-                return err
+                if self.mode == 'debug':
+                    raise e
             except Exception as e:
                 ret_text = []
                 ret_text.append('오류 발생')
@@ -325,6 +326,10 @@ class BotManager():
                 data_info['stop'] = True
                 t.join()
                 err = 1
+                if self.mode == 'debug':
+                    raise e
+
+            if err > 0:
                 return err
 
     def close(self):

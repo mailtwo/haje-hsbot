@@ -88,19 +88,65 @@ class DBConnector(object):
         self.wild_query_filter = '( ' + expansion_query_str + ' )'
 
         self.parse_word_list = [
-            (list(self.hero_alias.keys()), 'hero', lambda word: self.hero_alias[word]),
-            ('([0-9]+)코(스트)?', 'cost', lambda re_obj: int(re_obj.group(1))),
-            ('([0-9]+)[ /]([0-9]+)', 'attackhealth', lambda re_obj: (int(re_obj.group(1)), int(re_obj.group(2)))),
-            ('([0-9]+)공(격력)?', 'attack', lambda re_obj: int(re_obj.group(1))),
-            ('([0-9]+)체(력)?', 'health', lambda re_obj: int(re_obj.group(1))),
-            (hs_races, 'race', lambda word: word),
-            (hs_expansion_group, 'expansion_group', lambda word: word),
-            (list(self.type_alias.keys()), 'type', lambda word: self.type_alias[word]),
-            (list(self.rarity_alias.keys()), 'rarity', lambda word: self.rarity_alias[word]),
-            ([';'], 'end_stat', lambda word: word),
-            (hs_keywords, 'keyword', lambda word: word),
-            (list(self.keyword_alias.keys()), 'keyword', lambda word: self.keyword_alias[word]),
-            (list(self.expansion_alias.keys()), 'expansion', lambda word: self.expansion_alias[word]),
+            (list(self.hero_alias.keys()), 'hero',
+                lambda word: self.hero_alias[word]),
+            ('([0-9]+)([-+])?코(스트)?', 'cost',
+                lambda re_obj: {
+                    'value': int(re_obj.group(1)),
+                    'op': 'eq' if re_obj.group(2) is None else re_obj.group(2)
+                }),
+            ('([0-9]+)~([0-9]+)코(스트)?', 'costrange',
+                lambda re_obj: {
+                    'value': (int(re_obj.group(1)), int(re_obj.group(2)))
+                }),
+            ('([0-9]+)([-+])?[ /]([0-9]+)([-+])?', 'attackhealth',
+                lambda re_obj: {
+                    'value': (int(re_obj.group(1)), int(re_obj.group(3))),
+                    'op': ('eq' if re_obj.group(2) is None else re_obj.group(2),
+                           'eq' if re_obj.group(4) is None else re_obj.group(4))
+                }),
+            ('([0-9]+)([-+])?공(격력)?', 'attack',
+                lambda re_obj: {
+                    'value': int(re_obj.group(1)),
+                    'op': 'eq' if re_obj.group(2) is None else re_obj.group(2)
+                }),
+            ('([0-9]+)~([0-9]+)공(격력)?', 'attackrange',
+                lambda re_obj: {
+                    'value': (int(re_obj.group(1)), int(re_obj.group(2)))
+                }),
+            ('([0-9]+)([-+])?체(력)?', 'health',
+                lambda re_obj: {
+                    'value': int(re_obj.group(1)),
+                    'op': 'eq' if re_obj.group(2) is None else re_obj.group(2)
+                }),
+            ('([0-9]+)~([0-9]+)체(력)?', 'healthrange',
+                lambda re_obj: {
+                    'value': (int(re_obj.group(1)), int(re_obj.group(2)))
+                }),
+            (hs_races, 'race',
+                lambda word: {'value': word}),
+            (hs_expansion_group, 'expansion_group',
+                lambda word: {'value': word}),
+            (list(self.type_alias.keys()), 'type',
+                lambda word: {
+                    'value': self.type_alias[word]
+                }),
+            (list(self.rarity_alias.keys()), 'rarity',
+                lambda word: {
+                    'value': self.rarity_alias[word]
+                }),
+            ([';'], 'end_stat',
+                lambda word: {'value': word}),
+            (hs_keywords, 'keyword',
+                lambda word: {'value': word}),
+            (list(self.keyword_alias.keys()), 'keyword',
+                lambda word: {
+                    'value': self.keyword_alias[word]
+                }),
+            (list(self.expansion_alias.keys()), 'expansion',
+                lambda word: {
+                    'value': self.expansion_alias[word]
+                }),
         ]
         for i in range(len(self.parse_word_list)):
             cond, word_type, ret_fun = self.parse_word_list[i]
@@ -158,6 +204,7 @@ class DBConnector(object):
     def _construct_mem_db(self, df):
         keys = []
         names = []
+        eng_names = []
         card_texts = []
         card_texts_norm = []
         for idx, row in df.iterrows():
@@ -165,11 +212,13 @@ class DBConnector(object):
                 continue
             keys.append(row['web_id'])
             names.append(row['name'])
+            eng_names.append(row['eng_name'])
             card_texts.append(row['card_text'])
             card_texts_norm.append(self.normalize_text(row['card_text']))
         return {
             'key': keys,
             'name': names,
+            'eng_name': eng_names,
             'text': card_texts,
             'norm_text': card_texts_norm
         }
@@ -204,26 +253,58 @@ class DBConnector(object):
         if ('race' in stat_query) and ('모두' not in stat_query['race']):
             stat_query['race'].append('모두')
 
-        for k, v_list in stat_query.items():
+        for k, t_list in stat_query.items():
+            cur_value_query = []
             if k in card_db_col:
-                cur_value_query = []
-                if len(v_list) == 0:
+                if len(t_list) == 0:
                     continue
-                for v in v_list:
+                for token in t_list:
+                    v = token['value']
+                    op = '=='
+                    if 'op' in token:
+                        if token['op'] == '+':
+                            op = '>='
+                        elif token['op'] == '-':
+                            op = '<='
+                        else:
+                            continue
+
                     if type(v) == int:
                         if -10000 < v < 10000:
-                            cur_value_query.append('%s == %s' % (k , str(v)))
+                            cur_value_query.append('%s(%s %s %s)' % ('not ' if token['neg'] else '', k, op, str(v)))
                     else:
-                        cur_value_query.append('%s == \"%s\"' % (k , v))
-                if len(cur_value_query) > 0:
-                    query_str.append('(' + (' | '.join(cur_value_query)) + ')')
+                        cur_value_query.append('%s %s \"%s\"' % (k, op, v))
+
             elif k == 'attackhealth':
                 cur_value_query = []
-                for v in v_list:
-                    attack, health = v
-                    cur_value_query.append('( %s == %s & %s == %s )' % ('attack', attack, 'health', health))
-                if len(cur_value_query) > 0:
-                    query_str.append('(' + (' | '.join(cur_value_query)) + ')')
+                for token in t_list:
+                    attack, health = token['value']
+                    cur_value_query.append('( %s(%s == %s & %s == %s) )' % ('not ' if token['neg'] else '',
+                                                                            'attack', attack, 'health', health))
+
+            elif k == 'costrange':
+                cur_value_query = []
+                for token in t_list:
+                    low, high = token['value']
+                    cur_value_query.append('( %s(%s >= %s & %s <= %s) )' % ('not ' if token['neg'] else '',
+                                                                            'cost', low, 'cost', high))
+
+            elif k == 'attackrange':
+                cur_value_query = []
+                for token in t_list:
+                    low, high = token['value']
+                    cur_value_query.append('( %s(%s >= %s & %s <= %s) )' % ('not ' if token['neg'] else '',
+                                                                            'attack', low, 'attack', high))
+
+            elif k == 'healthrange':
+                cur_value_query = []
+                for token in t_list:
+                    low, high = token['value']
+                    cur_value_query.append('( %s(%s >= %s & %s <= %s) )' % ('not ' if token['neg'] else '',
+                                                                            'health', low, 'health', high))
+
+            if len(cur_value_query) > 0:
+                query_str.append('(' + (' | '.join(cur_value_query)) + ')')
 
 
         # print (stat_query)
@@ -261,7 +342,15 @@ class DBConnector(object):
                 joined = self.alias_db.join(query_table[['web_id']].set_index('web_id'), how='inner', on='web_id')
                 cur_alias_mem_db = self._construct_alias_mem_db(joined)
 
-            name_list = cur_memdb['name']
+            check_eng = True
+            for w in text_query:
+                if ord(w) > 255:
+                    check_eng = False
+                    break
+            if check_eng:
+                name_list = cur_memdb['eng_name']
+            else:
+                name_list = cur_memdb['name']
             ret_key = []
             exactly_match = False
             for idx, each_name in enumerate(name_list):
@@ -358,7 +447,7 @@ class DBConnector(object):
                 return None, None, err_msg
 
             word_type = token_info['type']
-            value = token_info['value']
+            # value = token_info['value']
 
             if not res:
                 is_invalid = True
@@ -380,9 +469,9 @@ class DBConnector(object):
             # the normal case; type should be the database column string
             else:
                 if word_type not in stat_query:
-                    stat_query[word_type] = [value]
+                    stat_query[word_type] = [token_info]
                 else:
-                    stat_query[word_type].append(value)
+                    stat_query[word_type].append(token_info)
 
         # Here, if user query include any non-empty text query,
         # the program thinks the whole user query is for the text query
@@ -453,16 +542,24 @@ class DBConnector(object):
     def _parse_word_test(self, text):
         token_info = {
             'type': '',
-            'value': None
+            'value': None,
+            'neg':False,
         }
         res = False
         word_len = 0
         err_msg = None
+        neg = False
+        if text[0] == '-' or text[0] == '!':
+            neg = True
+            text = text[1:]
+        token_info['neg'] = neg
         for cond_fun, cond_type, word_type, ret_fun in self.parse_word_list:
             res, ret_data, word_len = cond_fun(text)
             if res:
                 token_info['type'] = word_type
-                token_info['value'] = ret_fun(ret_data)
+                for k, v in ret_fun(ret_data).items():
+                    token_info[k] = v
+                assert 'value' in token_info
                 break
         if type(token_info['value']) == int and not(-10000 < token_info['value'] < 10000):
             res = False
