@@ -89,7 +89,8 @@ class DBConnector(object):
 
         self.parse_word_list = [
             (list(self.hero_alias.keys()), 'hero',
-                lambda word: self.hero_alias[word]),
+                lambda word: {'value': self.hero_alias[word]}
+             ),
             ('([0-9]+)([-+])?코(스트)?', 'cost',
                 lambda re_obj: {
                     'value': int(re_obj.group(1)),

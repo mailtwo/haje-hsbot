@@ -126,7 +126,7 @@ class BotManager():
         add_text = None
         add_text_wo_url = None
         if not std_df.empty and not wild_df.empty:
-            add_text = '그 외 %d 장의 야생 카드%s 검색되었습니다' % (wild_df.shape[0], ('가' if wild_df.shap[0] == 1 else '들이'))
+            add_text = '그 외 %d 장의 야생 카드%s 검색되었습니다' % (wild_df.shape[0], ('가' if wild_df.shape[0] == 1 else '들이'))
             add_text_wo_url = add_text
             if wild_df.shape[0] <= 5:
                 ret_text = []
@@ -179,6 +179,9 @@ class BotManager():
                 }
                 msg.append(add_info)
             self.send_attach_message(msg)
+            # easter-egg
+            if card['web_id'] == 'CS2_162':
+                self.send_msg_pair(MsgPair('simple_txt', '지금 바로 접속!\n<https://www.twitch.tv/twilightuuuu/>'))
 
         elif cards.shape[0] <= 5:
             ret_text = []
@@ -233,6 +236,7 @@ class BotManager():
 
         self.channel_id = channel_id
         self.filter_channel = channel_id
+        #self.filter_channel = 'C04R69MJG'
         self.slack_token = token_id
         return True
 
@@ -545,7 +549,8 @@ class BotManager():
                 username='하스봇',
                 icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
                 user=user,
-                text=msg_text
+                text=msg_text,
+                unfurl_links='true'
             )
         else:
             self.sc.api_call(
@@ -553,7 +558,8 @@ class BotManager():
                 channel=channel,
                 username='하스봇',
                 icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
-                text=msg_text
+                text=msg_text,
+                unfurl_links='true'
             )
 
     def send_attach_message(self, msg_info, channel=None):
