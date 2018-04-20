@@ -251,8 +251,8 @@ class DBConnector(object):
                 expansion += self.wild_filter
             if len(expansion) > 0:
                 stat_query['expansion'] = expansion
-        if ('race' in stat_query) and ('모두' not in stat_query['race']):
-            stat_query['race'].append('모두')
+        if ('race' in stat_query):
+            stat_query['race'].append({'value': '모두', 'neg': False, 'op': 'eq'})
 
         for k, t_list in stat_query.items():
             cur_value_query = []
@@ -267,6 +267,8 @@ class DBConnector(object):
                             op = '>='
                         elif token['op'] == '-':
                             op = '<='
+                        elif token['op'] == 'eq':
+                            op = '=='
                         else:
                             continue
 
