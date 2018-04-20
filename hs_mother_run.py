@@ -48,6 +48,10 @@ def main():
         filter_channel = channel_id
 
     sc = SlackClient(token_id)
+    if not sc.rtm_connect():
+        print('Error while sc.rtm_connect()')
+        return False
+    sc.server.websocket.sock.setblocking(1)
     proc = None
     while sc.server.connected:
         msg_list = sc.rtm_read()
