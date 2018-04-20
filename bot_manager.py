@@ -53,7 +53,7 @@ class BotManager():
         self.db = DBConnector(mode)
         self.db.load(os.path.join('database', 'card_info.pd'), os.path.join('database', 'alias.pd'))
 
-        self.version = 'V1.1.0'
+        self.version = 'V2.2.0'
         self.sc = None
         self.channel_id = None
         self.filter_channel = None
@@ -66,7 +66,7 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '야생 마법사 정령'
+        # user_query = '폭발할'
         # stat_query, text_query, err_msg = self.db.parse_user_request(user_query)
         # print (stat_query, text_query, err_msg)
         # inner_result = None
@@ -74,7 +74,7 @@ class BotManager():
         #     if len(stat_query.keys()) > 0:
         #         inner_result = self.db.query_stat(stat_query)
         #         print(inner_result.shape[0])
-        #     card, group_df = self.db.query_text(inner_result, stat_query, text_query)
+        #     card, group_df = self.db.query_text_in_card_text(inner_result, stat_query, text_query)
         #     print(card.shape[0], [df.shape[0] for df in group_df.values()])
         #     print('--- %s ---' % ('기본 출력', ))
         #     for idx, row in card.iterrows():
