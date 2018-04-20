@@ -14,7 +14,7 @@ def process_message(proc, msg):
             proc.kill()
 
     elif argv[0] == '시작':
-        proc = subprocess.Popen(['python', 'hs_bot_run.py', 'release'], shell=True)
+        proc = subprocess.Popen(['python3.6', 'hs_bot_run.py', 'release'], shell=True)
     elif argv[0] == '재시작':
         if proc is None:
             os.system('bash kill.sh')
