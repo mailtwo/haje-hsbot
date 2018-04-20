@@ -4,7 +4,7 @@ import pandas as pd
 
 card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
 alias_db_col = ['web_id', 'alias']
-hs_keywords = ['은신', '도발', '돌진', '질풍', '빙결', '침묵', '주문 공격력', '차단', '천상의 보호막', '독성',
+hs_keywords = ['은신', '도발', '돌진', '질풍', '광풍', '빙결', '침묵', '주문 공격력', '차단', '천상의 보호막', '독성',
                '전투의 함성', '전투의 함성:', '죽음의 메아리', '죽음의 메아리:', '면역', '선택 -', '선택', '연계', '연계:'
                '과부하', '비밀', '비밀:', '예비 부품', '격려', '격려:', '창시합', '발견', '비취 골렘', '적응', '퀘스트',
                '퀘스트:', '보상', '보상:', '생명력 흡수', '소집', '개전', '속공', '잔상']
@@ -320,8 +320,8 @@ class DBConnector(object):
             ret = self.card_db
 
         if 'keyword' in stat_query:
-            for each_keyword in stat_query['keyword']:
-                card_list = self.keyword_db[each_keyword]
+            for token in stat_query['keyword']:
+                card_list = self.keyword_db[token['value']]
                 ret = self._faster_isin(ret, card_list)
 
         return ret
