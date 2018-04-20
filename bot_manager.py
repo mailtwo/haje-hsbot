@@ -19,6 +19,7 @@ MSG_TYPE = {
     'user_card_text_query': 4
 }
 file_db_col = ['date', 'file_id']
+hs_expansion_priority = ['정규', '야생', '모험모드']
 
 def get_namelist_length(name_list):
     max_str_len = 0
@@ -65,7 +66,7 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '광풍'
+        # user_query = '야생 마법사 정령'
         # stat_query, text_query, err_msg = self.db.parse_user_request(user_query)
         # print (stat_query, text_query, err_msg)
         # inner_result = None
@@ -73,10 +74,15 @@ class BotManager():
         #     if len(stat_query.keys()) > 0:
         #         inner_result = self.db.query_stat(stat_query)
         #         print(inner_result.shape[0])
-        #     card, std_df, wild_df = self.db.query_text(inner_result, stat_query, text_query)
-        #     print(card.shape[0], std_df.shape[0], wild_df.shape[0])
+        #     card, group_df = self.db.query_text(inner_result, stat_query, text_query)
+        #     print(card.shape[0], [df.shape[0] for df in group_df.values()])
+        #     print('--- %s ---' % ('기본 출력', ))
         #     for idx, row in card.iterrows():
-        #         print (row)
+        #         print(row['orig_name'], row['expansion'])
+        #     for key, df in group_df.items():
+        #         print('--- %s ---' % (key, ))
+        #         for idx, row in df.iterrows():
+        #             print(row['orig_name'], row['expansion'])
         # return
         # self.process_bot_instruction({'text': '하스봇! 삭제 1'})
 
@@ -122,17 +128,18 @@ class BotManager():
 
         return '```' + cur_help_dict['text'] + '```'
 
-    def process_card_message(self, query_text, cards, std_df, wild_df):
-        add_text = None
-        add_text_wo_url = None
-        if not std_df.empty and not wild_df.empty:
-            add_text = '그 외 %d 장의 야생 카드%s 검색되었습니다' % (wild_df.shape[0], ('가' if wild_df.shape[0] == 1 else '들이'))
+    def process_card_message(self, query_text, cards, group_df):
+        add_text_gp = {}
+        add_wo_url_gp = {}
+        add_text_valid = {}
+        for group_key, df in group_df.items():
+            add_text = '그 외 %d 장의 %s 카드%s 검색되었습니다' % (df.shape[0], group_key, ('가' if df.shape[0] == 1 else '들이'))
             add_text_wo_url = add_text
-            if wild_df.shape[0] <= 5:
+            if df.shape[0] <= 5:
                 ret_text = []
                 ret_text_wo_url = []
-                for idx in range(wild_df.shape[0]):
-                    card = wild_df.iloc[idx]
+                for idx in range(df.shape[0]):
+                    card = df.iloc[idx]
                     ret_text.append('<%s|%s>' % (card['detail_url'],
                                                 '[' + card['orig_name'] + ']'))
                     ret_text_wo_url.append( '[' + card['orig_name'] + ']')
@@ -141,6 +148,22 @@ class BotManager():
             else:
                 add_text += '.'
                 add_text_wo_url += '.'
+
+            add_text_gp[group_key] = add_text
+            add_wo_url_gp[group_key] = add_text_wo_url
+
+        prev_not_empty = False
+        for idx, group_key in enumerate(hs_expansion_priority):
+            if idx == 0:
+                add_text_valid[group_key] = False
+            # add text is valid only if current one and one of previous dfs is not empty
+            elif prev_not_empty and not group_df[group_key].empty:
+                add_text_valid[group_key] = True
+            else:
+                add_text_valid[group_key] = False
+
+            if not group_df[group_key].empty:
+                prev_not_empty = True
 
         if cards.shape[0] == 1:
             card = cards.iloc[0]
@@ -171,17 +194,19 @@ class BotManager():
                 card_info['fields'] = field_info
 
             msg = [card_info]
-            if add_text is not None:
+            for group_key in hs_expansion_priority:
+                if not add_text_valid[group_key]:
+                    continue
                 add_info = {
                     'fields': [{
-                        'value': add_text
+                        'value': add_text_gp[group_key]
                     }]
                 }
                 msg.append(add_info)
             self.send_attach_message(msg)
             # easter-egg
             if card['web_id'] == 'CS2_162':
-                self.send_msg_pair(MsgPair('simple_txt', '지금 바로 접속!\n<https://www.twitch.tv/twilightuuuu/>'))
+                self.send_msg_pair(MsgPair('simple_txt', '지금 바로 접속!\n<https://www.twitch.tv/twilightuuuu/>'), {'unfurl_links': 'true'})
 
         elif cards.shape[0] <= 5:
             ret_text = []
@@ -190,8 +215,10 @@ class BotManager():
                 ret_text.append('<%s|%s>' % (card['detail_url'],
                                             '[' + card['orig_name'] + ']'))
             ret_text = ', '.join(ret_text)
-            if add_text is not None:
-                ret_text = ret_text + '\n' + add_text
+            for group_key in hs_expansion_priority:
+                if not add_text_valid[group_key]:
+                    continue
+                ret_text = ret_text + '\n' + add_text_gp[group_key]
             self.send_message(ret_text)
 
         else:
@@ -211,8 +238,15 @@ class BotManager():
                 ret_text.append(cur_text)
 
             ret_text = '\n'.join(ret_text)
-            if add_text_wo_url is not None:
-                ret_text = ret_text + '\n\n' + add_text_wo_url
+            add_texts = ''
+            for group_key in hs_expansion_priority:
+                if not add_text_valid[group_key]:
+                    continue
+                add_texts = add_texts + '\n' + add_wo_url_gp[group_key]
+
+            if len(add_texts) > 0:
+                ret_text = ret_text + '\n' + add_texts
+
             self.upload_snippet(ret_text, raw_title='[%s] - 검색결과 %d개' % (query_text, cards.shape[0]))
 
     def load_bot_token(self, path):
@@ -377,15 +411,15 @@ class BotManager():
         if len(stat_query.keys()) > 0:
             inner_result = self.db.query_stat(stat_query)
         if not is_text_for_card_text:
-            cards, std_df, wild_df = self.db.query_text(inner_result, stat_query, text_query)
+            cards, group_df = self.db.query_text(inner_result, stat_query, text_query)
         else:
-            cards, std_df, wild_df = self.db.query_text_in_card_text(inner_result, stat_query, text_query)
+            cards, group_df= self.db.query_text_in_card_text(inner_result, stat_query, text_query)
 
         if cards.empty:
             ret_text = MsgPair('simple_txt', '%s 에 해당하는 카드를 찾을 수 없습니다.' % (text, ))
             self.send_msg_pair(ret_text)
         else:
-            self.process_card_message(user_query, cards, std_df, wild_df)
+            self.process_card_message(user_query, cards, group_df)
 
     def process_bot_instruction(self, msg_info):
         text = msg_info['text']
@@ -438,7 +472,7 @@ class BotManager():
         if len(stat_query.keys()) > 0:
             inner_result = self.db.query_stat(stat_query)
 
-        cards, _, _ = self.db.query_text(inner_result, stat_query, text_query)
+        cards, _ = self.db.query_text(inner_result, stat_query, text_query)
         card_alias = self.db.normalize_text(text[sep_idx + 1:].strip(), cannot_believe=True)
         if len(card_alias) == 0:
             return MsgPair('simple_txt', '별명을 작성해주세요.')
@@ -473,7 +507,7 @@ class BotManager():
             inner_result = None
             if len(stat_query.keys()) > 0:
                 inner_result = self.db.query_stat(stat_query)
-            cards, _, _ = self.db.query_text(inner_result, stat_query, text_query)
+            cards, _ = self.db.query_text(inner_result, stat_query, text_query)
             if cards.shape[0] == 0:
                 return MsgPair('simple_txt', '[%s] 에 해당하는 카드를 찾을 수 없습니다.' % (user_query,))
             elif cards.shape[0] > 1:
@@ -529,19 +563,22 @@ class BotManager():
         self.db.flush_alias_db()
         return MsgPair('simple_txt', '성공적으로 업데이트되었습니다.')
 
-    def send_msg_pair(self, msg_pair):
+    def send_msg_pair(self, msg_pair, args=None):
         if msg_pair is not None:
             if msg_pair.msg_type == 'snippet_title':
-                self.upload_snippet(msg_pair.msg_text, raw_title=msg_pair.msg_title)
+                self.upload_snippet(msg_pair.msg_text, raw_title=msg_pair.msg_title, args=args)
             elif msg_pair.msg_type == 'snippet':
-                self.upload_snippet(msg_pair.msg_text)
+                self.upload_snippet(msg_pair.msg_text, args=args)
             elif msg_pair.msg_type == 'simple_txt':
-                self.send_message(msg_pair.msg_text)
+                self.send_message(msg_pair.msg_text, args=args)
 
-    def send_message(self, msg_text, channel=None, user=None):
+    def send_message(self, msg_text, channel=None, user=None, args=None):
         if channel is None:
             channel = self.channel_id
         assert self.sc is not None
+        unfurl_links = 'false'
+        if args is not None and 'unfurl_links' in args:
+            unfurl_links = args['unfurl_links']
         if user is not None:
             self.sc.api_call(
                 'chat.postMessage',
@@ -550,7 +587,7 @@ class BotManager():
                 icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
                 user=user,
                 text=msg_text,
-                unfurl_links='true'
+                unfurl_links=unfurl_links
             )
         else:
             self.sc.api_call(
@@ -559,10 +596,10 @@ class BotManager():
                 username='하스봇',
                 icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
                 text=msg_text,
-                unfurl_links='true'
+                unfurl_links=unfurl_links
             )
 
-    def send_attach_message(self, msg_info, channel=None):
+    def send_attach_message(self, msg_info, channel=None, args=None):
         if channel is None:
             channel = self.channel_id
         assert self.sc is not None
@@ -574,7 +611,7 @@ class BotManager():
             attachments=msg_info
         )
 
-    def upload_snippet(self, raw_text, raw_title='', channel=None):
+    def upload_snippet(self, raw_text, raw_title='', channel=None, args=None):
         if channel is None:
             channel = self.channel_id
         assert self.sc is not None

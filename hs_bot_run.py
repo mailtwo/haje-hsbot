@@ -55,15 +55,18 @@ def main():
         ret_code = run_program(mode)
         print('Return code: %d. Terminate program...' % (ret_code, ))
     except Exception as e:
-        ret_text = []
-        ret_text.append(str(sys.exc_info()[0]))
-        ret_text = '\n'.join(ret_text)
-        with open('critical_error.log', 'a+', encoding='utf-8') as f:
-            f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()),))
-            f.write('Exception occurred while exception handling!\n')
-            f.write(ret_text)
-            f.write(traceback.format_exc())
-            f.flush()
+        if mode == 'debug':
+            raise e
+        else:
+            ret_text = []
+            ret_text.append(str(sys.exc_info()[0]))
+            ret_text = '\n'.join(ret_text)
+            with open('critical_error.log', 'a+', encoding='utf-8') as f:
+                f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()),))
+                f.write('Exception occurred while exception handling!\n')
+                f.write(ret_text)
+                f.write(traceback.format_exc())
+                f.flush()
 
 
 if __name__ == '__main__':

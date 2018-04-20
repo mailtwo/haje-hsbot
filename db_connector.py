@@ -4,12 +4,52 @@ import pandas as pd
 
 card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
 alias_db_col = ['web_id', 'alias']
-hs_keywords = ['은신', '도발', '돌진', '질풍', '광풍', '빙결', '침묵', '주문 공격력', '차단', '천상의 보호막', '독성',
-               '전투의 함성', '전투의 함성:', '죽음의 메아리', '죽음의 메아리:', '면역', '선택 -', '선택', '연계', '연계:'
-               '과부하', '비밀', '비밀:', '예비 부품', '격려', '격려:', '창시합', '발견', '비취 골렘', '적응', '퀘스트',
-               '퀘스트:', '보상', '보상:', '생명력 흡수', '소집', '개전', '속공', '잔상']
+# hs_keywords = ['은신', '도발', '돌진', '질풍', '광풍', '빙결', '침묵', '주문 공격력', '차단', '천상의 보호막', '독성',
+#                '전투의 함성', '전투의 함성:', '죽음의 메아리', '죽음의 메아리:', '면역', '선택 -', '선택', '연계', '연계:'
+#                '과부하', '비밀', '비밀:', '예비 부품', '격려', '격려:', '창시합', '발견', '비취 골렘', '적응', '퀘스트',
+#                '퀘스트:', '보상', '보상:', '생명력 흡수', '소집', '개전', '속공', '잔상']
 hs_races = ['멀록', '악마', '야수', '용족', '토템', '해적', '기계', '정령', '모두']
-hs_expansion_group = ['정규', '야생']
+hs_expansion_group = {
+    '정규': ['코볼트', '얼어붙은 왕좌', '운고로', '마녀숲', '오리지널', '기본'],
+    '야생': ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹', '가젯잔', '카라잔', '고대 신'],
+    '모험모드': ['낙스라마스 모험모드', '검은바위 산 모험모드', '탐험가 연맹 모험모드', '카라잔 모험모드', '얼어붙은 왕좌 모험모드', '코볼트 모험모드', '마녀숲 모험모드']
+}
+hs_expansion_priority = ['정규', '야생', '모험모드']
+hs_keywords = {
+    '소집': 'RECRUIT',
+    '돌진': 'CHARGE',
+    '크툰': 'RITUAL',
+    '비밀': 'SECRET',
+    '은신': 'STEALTH',
+    '엉뚱': 'FORGETFUL',
+    '오라': 'AURA',
+    '도발': 'TAUNT',
+    '격려': 'INSPIRE',
+    '질풍': 'WINDFURY',
+    '잠듦': 'UNTOUCHABLE',
+    '천상의 보호막': 'DIVINE_SHIELD',
+    '비취': 'JADE_GOLEM',
+    '격노': 'ENRAGED',
+    '카운터': 'COUNTER',
+    '얼림': 'FREEZE',
+    '연계': 'COMBO',
+    '면역': 'IMMUNE',
+    '주문 공격력': 'SPELLPOWER',
+    '침묵': 'SILENCE',
+    '과부하': 'OVERLOAD',
+    '발견': 'DISCOVER',
+    '독성': 'POISONOUS',
+    '죽음의 메아리': 'DEATHRATTLE',
+    '선택': 'CHOOSE_ONE',
+    '적응': 'ADAPT',
+    '퀘스트': 'QUEST',
+    '전투의 함성': 'BATTLECRY',
+    '주문 면역': 'CANT_BE_TARGETED_BY_SPELLS',
+    '공격 불가': 'CANT_ATTACK',
+    '생명력 흡수': 'LIFESTEAL',
+    '뽑을시': 'TOPDECK',
+    '광풍': 'MEGA_WINDFURY',
+}
 
 class DBConnector(object):
     def __init__(self, mode):
@@ -76,16 +116,14 @@ class DBConnector(object):
                               '죽메:': '죽음의 메아리:',
                               '선택-': '선택 -',
                               '선택:': '선택 -'}
-        expansions = []
-        for exp_name in self.standard_filter:
-            expansions.append('expansion == \"%s\"' % (exp_name, ))
-        expansion_query_str = ' | '.join(expansions)
-        self.standard_query_str = '( ' + expansion_query_str + ' )'
-        expansions = []
-        for exp_name in self.wild_filter:
-            expansions.append('expansion == \"%s\"' % (exp_name, ))
-        expansion_query_str = ' | '.join(expansions)
-        self.wild_query_filter = '( ' + expansion_query_str + ' )'
+
+        # self.exp_group_query = {}
+        # for k, v in hs_expansion_group.items():
+        #     expansions = []
+        #     for exp_name in hs_expansion_group['정규']:
+        #         expansions.append('expansion == \"%s\"' % (exp_name, ))
+        #     expansion_query_str = ' | '.join(expansions)
+        #     self.exp_group_query[k] = '( ' + expansion_query_str + ' )'
 
         self.parse_word_list = [
             (list(self.hero_alias.keys()), 'hero',
@@ -126,7 +164,7 @@ class DBConnector(object):
                 }),
             (hs_races, 'race',
                 lambda word: {'value': word}),
-            (hs_expansion_group, 'expansion_group',
+            (list(hs_expansion_group.keys()), 'expansion_group',
                 lambda word: {'value': word}),
             (list(self.type_alias.keys()), 'type',
                 lambda word: {
@@ -138,7 +176,7 @@ class DBConnector(object):
                 }),
             ([';'], 'end_stat',
                 lambda word: {'value': word}),
-            (hs_keywords, 'keyword',
+            (list(hs_keywords.keys()), 'keyword',
                 lambda word: {'value': word}),
             (list(self.keyword_alias.keys()), 'keyword',
                 lambda word: {
@@ -194,13 +232,13 @@ class DBConnector(object):
         #self.mem_db = self._construct_mem_db(self.card_db)
         self.mem_db = self._construct_mem_db(self.card_db)
         self.alias_mem_db = self._construct_alias_mem_db(self.alias_db)
-        self.keyword_db = {}
-        for keyword in hs_keywords:
-            cur_list = []
-            for idx, row in self.card_db.iterrows():
-                if keyword in row['card_text']:
-                    cur_list.append(row['web_id'])
-            self.keyword_db[keyword] = cur_list
+        # self.keyword_db = {}
+        # for keyword in hs_keywords:
+        #     cur_list = []
+        #     for idx, row in self.card_db.iterrows():
+        #         if keyword in row['card_text']:
+        #             cur_list.append(row['web_id'])
+        #     self.keyword_db[keyword] = cur_list
 
     def _construct_mem_db(self, df):
         keys = []
@@ -245,10 +283,11 @@ class DBConnector(object):
         query_str = []
         if 'expansion' not in stat_query:
             expansion = []
-            if ('expansion_group' in stat_query) and ('정규' in stat_query['expansion_group']):
-                expansion += self.standard_filter
-            if ('expansion_group' in stat_query) and ('야생' in stat_query['expansion_group']):
-                expansion += self.wild_filter
+            if 'expansion_group' in stat_query:
+                for token in stat_query['expansion_group']:
+                    if token['value'] in hs_expansion_group.keys():
+                        for v in hs_expansion_group[token['value']]:
+                            expansion.append({'value': v, 'neg': False, 'op':'eq'})
             if len(expansion) > 0:
                 stat_query['expansion'] = expansion
         if ('race' in stat_query):
@@ -278,29 +317,32 @@ class DBConnector(object):
                     else:
                         cur_value_query.append('%s %s \"%s\"' % (k, op, v))
 
+            elif k == 'keyword':
+                for token in t_list:
+                    col = hs_keywords[token['value']]
+                    cur_value_query.append('%s(%s == True)' % ('not ' if token['neg'] else '', col))
+                # Exceptionally, keyword queries are concatenated with ANDs
+                cur_value_query = [' & '.join(cur_value_query)]
+
             elif k == 'attackhealth':
-                cur_value_query = []
                 for token in t_list:
                     attack, health = token['value']
                     cur_value_query.append('( %s(%s == %s & %s == %s) )' % ('not ' if token['neg'] else '',
                                                                             'attack', attack, 'health', health))
 
             elif k == 'costrange':
-                cur_value_query = []
                 for token in t_list:
                     low, high = token['value']
                     cur_value_query.append('( %s(%s >= %s & %s <= %s) )' % ('not ' if token['neg'] else '',
                                                                             'cost', low, 'cost', high))
 
             elif k == 'attackrange':
-                cur_value_query = []
                 for token in t_list:
                     low, high = token['value']
                     cur_value_query.append('( %s(%s >= %s & %s <= %s) )' % ('not ' if token['neg'] else '',
                                                                             'attack', low, 'attack', high))
 
             elif k == 'healthrange':
-                cur_value_query = []
                 for token in t_list:
                     low, high = token['value']
                     cur_value_query.append('( %s(%s >= %s & %s <= %s) )' % ('not ' if token['neg'] else '',
@@ -319,21 +361,22 @@ class DBConnector(object):
         else:
             ret = self.card_db
 
-        if 'keyword' in stat_query:
-            for token in stat_query['keyword']:
-                card_list = self.keyword_db[token['value']]
-                ret = self._faster_isin(ret, card_list)
+        # if 'keyword' in stat_query:
+        #     for token in stat_query['keyword']:
+        #         card_list = self.keyword_db[token['value']]
+        #         ret = self._faster_isin(ret, card_list)
 
         return ret
 
     def query_text(self, query_table, stat_query, text_query):
         text_query = text_query.strip()
+        group_df = {}
+        for k in hs_expansion_group.keys():
+            group_df[k] = None
         if len(text_query) == 0:
             if query_table is None:
                 return pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col)
             query_table = query_table.drop_duplicates(subset='web_id', keep='last')
-            std_df = pd.DataFrame(columns=query_table.columns)
-            wild_df = pd.DataFrame(columns=query_table.columns)
         else:
             if query_table is None:
                 assert(self.card_db is not None)
@@ -372,31 +415,33 @@ class DBConnector(object):
 
             query_table = self._faster_isin(self.card_db, ret_key)
             query_table.drop_duplicates(subset='web_id', keep='last', inplace=True)
-            std_df = pd.DataFrame(columns=query_table.columns)
-            wild_df = pd.DataFrame(columns=query_table.columns)
+
+        for k in hs_expansion_group.keys():
+            group_df[k] = pd.DataFrame(columns=query_table.columns)
 
         if not query_table.empty:
             if ('expansion_group' not in stat_query) and ('expansion' not in stat_query):
                 df_group = query_table.groupby('expansion')
-                std_list = [df_group.get_group(x) for x in self.standard_filter if x in df_group.groups]
-                wild_list = [df_group.get_group(x) for x in self.wild_filter if x in df_group.groups]\
+                for k, group_filter in hs_expansion_group.items():
+                    group_list = [df_group.get_group(x) for x in group_filter if x in df_group.groups]
+                    if len(group_list) > 0:
+                        group_df[k] = pd.concat(group_list)
 
-                if len(std_list) > 0:
-                    std_df = pd.concat(std_list)
-                if len(wild_list) > 0:
-                    wild_df = pd.concat(wild_list)
-                query_table = std_df if not std_df.empty else wild_df
+                query_table = group_df[hs_expansion_priority[-1]]
+                for k in hs_expansion_priority:
+                    if not group_df[k].empty:
+                        query_table = group_df[k]
+                        break
 
-        return query_table, std_df, wild_df
+        return query_table, group_df
 
     def query_text_in_card_text(self, query_table, stat_query, text_query):
         text_query = text_query.strip()
+        group_df = {}
         if len(text_query) == 0:
             if query_table is None:
                 return pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col)
             query_table = query_table.drop_duplicates(subset='web_id', keep='last')
-            std_df = pd.DataFrame(columns=query_table.columns)
-            wild_df = pd.DataFrame(columns=query_table.columns)
         else:
             if query_table is None:
                 assert(self.card_db is not None)
@@ -415,22 +460,25 @@ class DBConnector(object):
 
             query_table = self._faster_isin(self.card_db, ret_key)
             query_table.drop_duplicates(subset='web_id', keep='last', inplace=True)
-            std_df = pd.DataFrame(columns=query_table.columns)
-            wild_df = pd.DataFrame(columns=query_table.columns)
+
+        for k in hs_expansion_group.keys():
+            group_df[k] = pd.DataFrame(columns=query_table.columns)
 
         if not query_table.empty:
             if ('expansion_group' not in stat_query) and ('expansion' not in stat_query):
                 df_group = query_table.groupby('expansion')
-                std_list = [df_group.get_group(x) for x in self.standard_filter if x in df_group.groups]
-                wild_list = [df_group.get_group(x) for x in self.wild_filter if x in df_group.groups]\
+                for k, group_filter in hs_expansion_group.items():
+                    group_list = [df_group.get_group(x) for x in group_filter if x in df_group.groups]
+                    if len(group_list) > 0:
+                        group_df[k] = pd.concat(group_list)
 
-                if len(std_list) > 0:
-                    std_df = pd.concat(std_list)
-                if len(wild_list) > 0:
-                    wild_df = pd.concat(wild_list)
-                query_table = std_df if not std_df.empty else wild_df
+                query_table = group_df[hs_expansion_priority[-1]]
+                for k in hs_expansion_priority:
+                    if not group_df[k].empty:
+                        query_table = group_df[k]
+                        break
 
-        return query_table, std_df, wild_df
+        return query_table, group_df
 
     # parse the text user types and return its stat query and text query
     def parse_user_request(self, text):

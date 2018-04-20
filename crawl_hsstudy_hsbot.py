@@ -38,21 +38,36 @@ translate_table = {
         'LEGENDARY': '전설'
     },
     'extension': {
-        'TGT': '대 마상시합',
-        'OG': '고대 신',
-        'KARA': '카라잔',
-        'GANGS': '가젯잔',
-        'UNGORO': '운고로',
-        'ICECROWN': '얼어붙은 왕좌',
-        'LOOTAPALOOZA': '코볼트',
         'CORE': '기본',
         'EXPERT1': '오리지널',
         'HOF': '명예의 전당',
+        'TGT': '대 마상시합',
         'NAXX': '낙스라마스',
+        'NAXA': '낙스라마스 모험모드',
         'GVG': '고블린 대 노움',
         'BRM': '검은바위 산',
+        'BRMA': '검은바위 산 모험모드',
         'LOE': '탐험가 연맹',
-        'GILNEAS': '마녀숲'
+        'LOEA': '탐험가 연맹 모험모드',
+        'GANGS': '가젯잔',
+        'KARA': '카라잔',
+        'KAR_A': '카라잔 모험모드',
+        'OG': '고대 신',
+        'UNGORO': '운고로',
+        'ICECROWN': '얼어붙은 왕좌',
+        'ICCA': '얼어붙은 왕좌 모험모드',
+        'LOOTAPALOOZA': '코볼트',
+        'LOOTA': '코볼트 모험모드',
+        'GILNEAS': '마녀숲',
+        'GILA': '마녀숲 모험모드',
+    },
+    'adventure': {
+        'NAX': 'NAXA',
+        'BRMA': 'BRMA',
+        'LOEA': 'LOEA',
+        'ICCA': 'ICCA',
+        'LOOTA': 'LOOTA',
+        'GILA': 'GILA',
     },
     'race': {
         'MURLOC': '멀록',
@@ -64,16 +79,56 @@ translate_table = {
         'MECHANICAL': '기계',
         'ELEMENTAL': '정령',
         'ALL': '모두'
+    },
+    'keywords': {
+        'RECRUIT': '소집',
+        'CHARGE': '돌진',
+        'RITUAL': '크툰',
+        'SECRET': '비밀',
+        'STEALTH': '은신',
+        'FORGETFUL': '엉뚱',
+        'AURA': '오라',
+        'TAUNT': '도발',
+        'INSPIRE': '격려',
+        'WINDFURY': '질풍',
+        'UNTOUCHABLE': '잠듦',
+        'DIVINE_SHIELD': '천상의 보호막',
+        'JADE_GOLEM': '비취',
+        'ENRAGED': '격노',
+        'COUNTER': '카운터',
+        'FREEZE': '얼림',
+        'COMBO': '연계',
+        'IMMUNE': '면역',
+        'SPELLPOWER': '주문 공격력',
+        'SILENCE': '침묵',
+        'OVERLOAD': '과부하',
+        'DISCOVER': '발견',
+        'POISONOUS': '독성',
+        'DEATHRATTLE': '죽음의 메아리',
+        'CHOOSE_ONE': '선택',
+        'ADAPT': '적응',
+        'QUEST': '퀘스트',
+        'BATTLECRY': '전투의 함성',
+        'CANT_BE_TARGETED_BY_SPELLS': '주문 면역',
+        'CANT_ATTACK': '공격 불가',
+        'LIFESTEAL': '생명력 흡수',
+        'TOPDECK': '뽑을시',
+        'MEGA_WINDFURY': '광풍',
     }
 }
+keyword_keys = list(translate_table['keywords'].keys())
+ref_keywords_key = ['RECRUIT', 'JADE_GOLEM', 'IMMUNE', 'FREEZE', 'COUNTER', 'DISCOVER','ADAPT']
 
 card_db_col = ['web_id','orig_name', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
+card_db_col += keyword_keys
 
 force_run = True
 save_db = True
 
 def initial_db():
-    card_db = pd.DataFrame([['None', 'None', 'None', 'None', 'None','None', 'None', 0, 0, 0, 'None', 'None', 'None','None', 'None']], columns=card_db_col)
+    stat_value = ['None', 'None', 'None', 'None', 'None','None', 'None', 0, 0, 0, 'None', 'None', 'None','None', 'None']
+    stat_value += [False for _ in range(len(keyword_keys))]
+    card_db = pd.DataFrame([stat_value], columns=card_db_col)
     alias_db = pd.DataFrame([['None', 'None']], columns=['web_id', 'alias'])
     return card_db, alias_db
 
@@ -140,33 +195,37 @@ def start_crawling(db_data, db_root):
     name_dict = {}
 
     for card_id, card_name, img_url in zip(card_list, card_names, img_list):
-            card_info = card_data[card_id]
-            card_info['img_url'] = img_url
-            if 'type' in card_info and (card_info['type'] == 'ENCHANTMENT'):
-                continue
-            if 'set' in card_info and (card_info['set'] == 'HERO_SKINS' or card_info['set'] == 'TB' or card_info['set'] == 'CREDITS' or card_info['set'] == 'MISSIONS'):
-                continue
-            if 'name' not in card_info:
-                continue
-            if 'text' in card_info:
-                if card_info['text'][:3] == '[x]':
-                    card_info['text'] = card_info['text'][3:]
-                card_info['text'] = card_info['text'].replace('\n', ' ').replace('$', '').replace('#', '').replace('<b>', '*').replace('</b> ', '* ').replace('</b>', '* ') \
-                    .replace('<i>', '_').replace('</i> ', '_ ').replace('</i>', '_ ')
-            else:
-                card_info['text'] = ''
-            if '_BOSS_' in card_info['id']:
-                continue
-            card_info['text'] = card_info['text'].replace(chr(160), chr(32))
-            card_info['name'] = card_info['name'].replace(chr(160), chr(32))
+        card_info = card_data[card_id]
+        card_info['img_url'] = img_url
+        if 'type' in card_info and (card_info['type'] == 'ENCHANTMENT'):
+            continue
+        if 'set' in card_info and (card_info['set'] == 'HERO_SKINS' or card_info['set'] == 'TB' or card_info['set'] == 'CREDITS' or card_info['set'] == 'MISSIONS'):
+            continue
+        if 'name' not in card_info:
+            continue
+        if 'text' in card_info:
+            if card_info['text'][:3] == '[x]':
+                card_info['text'] = card_info['text'][3:]
+            card_info['text'] = card_info['text'].replace('\n', ' ').replace('$', '').replace('#', '').replace('<b>', '*').replace('</b> ', '* ').replace('</b>', '* ') \
+                .replace('<i>', '_').replace('</i> ', '_ ').replace('</i>', '_ ')
+        else:
+            card_info['text'] = ''
+        if '_BOSS_' in card_info['id']:
+            continue
+        card_info['text'] = card_info['text'].replace(chr(160), chr(32))
+        card_info['name'] = card_info['name'].replace(chr(160), chr(32))
 
-            if card_info['id'] in ['EX1_050', 'EX1_295', 'EX1_620']:
-                card_info['set'] = 'HOF'
+        if card_info['id'] in ['EX1_050', 'EX1_295', 'EX1_620']:
+            card_info['set'] = 'HOF'
 
-            if card_info['name'] not in name_dict.keys():
-                name_dict[card_info['name']] = [card_info]
-            else:
-                name_dict[card_info['name']].append(card_info)
+        for adv_key in translate_table['adventure'].keys():
+            if card_info['id'][:len(adv_key)] == adv_key:
+                card_info['set'] = translate_table['adventure'][adv_key]
+
+        if card_info['name'] not in name_dict.keys():
+            name_dict[card_info['name']] = [card_info]
+        else:
+            name_dict[card_info['name']].append(card_info)
 
     card_info_list = []
     for k, v in name_dict.items():
@@ -227,6 +286,20 @@ def start_crawling(db_data, db_root):
                             'img_url': card_info['img_url'],
                             'detail_url': detail_url,
             }
+            for v in keyword_keys:
+                index_data[v] = False
+            if 'mechanics' in card_info:
+                for v in card_info['mechanics']:
+                    if v not in keyword_keys:
+                        continue
+                    index_data[v] = True
+            if 'referencedTags' in card_info:
+                for v in card_info['referencedTags']:
+                    if v not in keyword_keys:
+                        continue
+                    index_data[v] = True
+            if '*광풍*' in card_info['text']:
+                index_data['MEGA_WINDFURY'] = True
             # if index_key in db_data[card_info['hero']]['index']:
             #     db_data[card_info['hero']]['index'][index_key].append(index_data)
             # else:
