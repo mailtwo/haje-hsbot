@@ -66,7 +66,7 @@ def main():
             op = '하스봇엄마!'
             if text[:len(op)] != op:
                 continue
-        proc = process_message(proc, text[len(op):])
+            proc = process_message(proc, text[len(op):])
 
 
 if __name__ == '__main__':
