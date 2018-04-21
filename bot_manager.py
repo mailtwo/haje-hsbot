@@ -413,7 +413,7 @@ class BotManager():
         if not is_text_for_card_text:
             cards, group_df = self.db.query_text(inner_result, stat_query, text_query)
         else:
-            cards, group_df= self.db.query_text_in_card_text(inner_result, stat_query, text_query)
+            cards, group_df = self.db.query_text_in_card_text(inner_result, stat_query, text_query)
 
         if cards.empty:
             ret_text = MsgPair('simple_txt', '%s 에 해당하는 카드를 찾을 수 없습니다.' % (text, ))

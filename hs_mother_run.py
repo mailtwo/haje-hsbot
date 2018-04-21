@@ -4,31 +4,64 @@ import json
 import subprocess
 from slackclient import SlackClient
 
+cur_os_type = 'linux'
+if sys.platform.startswith('win'):
+    cur_os_type = 'win'
 
-def process_message(proc, msg):
+def process_message(mode, proc, msg):
     argv = msg.strip().split()
     if argv[0] == '종료':
         if proc is None:
-            os.system('bash kill.sh')
+            if cur_os_type == 'linux':
+                ret = os.system('bash kill.sh')
+            else:
+                ret = os.system('taskkill /F /T /PID %i' % proc.pid)
         else:
-            proc.kill()
+            if cur_os_type == 'linux':
+                ret = os.system('kill -9 %i' % proc.pid)
+            else:
+                ret = os.system('taskkill /F /T /PID %i' % proc.pid)
+        if ret > 0:
+            print('Kill op ret: %d' % ret)
+        else:
+            proc = None
 
     elif argv[0] == '시작':
-        proc = subprocess.Popen(['python3.6', 'hs_bot_run.py', 'release'], shell=True)
+        op = ['python', 'hs_bot_run.py', mode]
+        if mode == 'debug':
+            print (op)
+
+        if cur_os_type == 'win':
+            op[0] = op[0] + '.exe'
+        else:
+            op[0] = op[0] + '3.6'
+        proc = subprocess.Popen(op, shell=False)
+
     elif argv[0] == '재시작':
         if proc is None:
             os.system('bash kill.sh')
         else:
             proc.kill()
-        proc = subprocess.Popen(['python', 'hs_bot_run.py', 'release'], shell=True)
+        op = ['python', 'hs_bot_run.py', mode]
+        if cur_os_type == 'win':
+            op[0] = op[0] + '.exe'
+        else:
+            op[0] = op[0] + '3.6'
+        if mode == 'debug':
+            print (op)
+        proc = subprocess.Popen(op, shell=False)
+
     elif argv[0] == '업데이트':
-        os.system('git pull ' + ' '.join(argv[1:]))
+        op = 'git pull ' + ' '.join(argv[1:])
+        if mode == 'debug':
+            print (op)
+        os.system(op)
 
     return proc
 
 
 def main():
-    mode = 'release'
+    mode = 'debug'
     if len(sys.argv) == 2:
         mode = sys.argv[1].lower()
         if mode != 'release' and mode != 'debug':
@@ -60,13 +93,13 @@ def main():
                 continue
             if 'user' not in msg_info or msg_info['user'][0] != 'U':
                 continue
-            if msg_info['channel'][:2] != 'DA':
+            if msg_info['channel'][:2] != 'DA' and msg_info['channel'] != filter_channel:
                 continue
             text = msg_info['text']
             op = '하스봇엄마!'
             if text[:len(op)] != op:
                 continue
-            proc = process_message(proc, text[len(op):])
+            proc = process_message(mode, proc, text[len(op):])
 
 
 if __name__ == '__main__':

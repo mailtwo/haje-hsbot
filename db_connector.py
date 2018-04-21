@@ -2,7 +2,6 @@ import os
 import re
 import pandas as pd
 
-card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
 alias_db_col = ['web_id', 'alias']
 # hs_keywords = ['은신', '도발', '돌진', '질풍', '광풍', '빙결', '침묵', '주문 공격력', '차단', '천상의 보호막', '독성',
 #                '전투의 함성', '전투의 함성:', '죽음의 메아리', '죽음의 메아리:', '면역', '선택 -', '선택', '연계', '연계:'
@@ -116,6 +115,8 @@ class DBConnector(object):
                               '죽메:': '죽음의 메아리:',
                               '선택-': '선택 -',
                               '선택:': '선택 -'}
+        self.card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
+        self.card_db_col += list(hs_keywords.values())
 
         # self.exp_group_query = {}
         # for k, v in hs_expansion_group.items():
@@ -295,7 +296,7 @@ class DBConnector(object):
 
         for k, t_list in stat_query.items():
             cur_value_query = []
-            if k in card_db_col:
+            if k in self.card_db_col:
                 if len(t_list) == 0:
                     continue
                 for token in t_list:
@@ -372,10 +373,10 @@ class DBConnector(object):
         text_query = text_query.strip()
         group_df = {}
         for k in hs_expansion_group.keys():
-            group_df[k] = None
+            group_df[k] = pd.DataFrame(columns=self.card_db_col)
         if len(text_query) == 0:
             if query_table is None:
-                return pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col)
+                return pd.DataFrame(columns=self.card_db_col), group_df
             query_table = query_table.drop_duplicates(subset='web_id', keep='last')
         else:
             if query_table is None:
@@ -438,9 +439,11 @@ class DBConnector(object):
     def query_text_in_card_text(self, query_table, stat_query, text_query):
         text_query = text_query.strip()
         group_df = {}
+        for k in hs_expansion_group.keys():
+            group_df[k] = pd.DataFrame(columns=self.card_db_col)
         if len(text_query) == 0:
             if query_table is None:
-                return pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col), pd.DataFrame(columns=card_db_col)
+                return pd.DataFrame(columns=self.card_db_col), group_df
             query_table = query_table.drop_duplicates(subset='web_id', keep='last')
         else:
             if query_table is None:
