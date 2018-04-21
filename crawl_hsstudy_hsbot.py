@@ -113,6 +113,10 @@ translate_table = {
         'CANT_ATTACK': '공격 불가',
         'LIFESTEAL': '생명력 흡수',
         'TOPDECK': '뽑을시',
+        'ECHO': '잔상',
+        'RUSH': '속공',
+        'START_OF_GAME': '개전',
+        'SPARE_PART': '예비 부품',
         'MEGA_WINDFURY': '광풍',
     }
 }
@@ -257,6 +261,7 @@ def start_crawling(db_data, db_root):
         else:
             card_info_list.append(v[0])
 
+    left_keyword = set()
     for card_info in card_info_list:
         card_id = card_info['id']
 
@@ -291,11 +296,13 @@ def start_crawling(db_data, db_root):
             if 'mechanics' in card_info:
                 for v in card_info['mechanics']:
                     if v not in keyword_keys:
+                        left_keyword.add (v)
                         continue
                     index_data[v] = True
             if 'referencedTags' in card_info:
                 for v in card_info['referencedTags']:
                     if v not in keyword_keys:
+                        left_keyword.add (v)
                         continue
                     index_data[v] = True
             if '*광풍*' in card_info['text']:
@@ -305,6 +312,7 @@ def start_crawling(db_data, db_root):
             # else:
             #     db_data[card_info['hero']]['index'][index_key] = [index_data]
             possible_data.append(index_data)
+    print(list(left_keyword))
     if use_crawling:
         driver.close()
     if len(possible_data) > 0:

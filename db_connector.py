@@ -47,6 +47,10 @@ hs_keywords = {
     '공격 불가': 'CANT_ATTACK',
     '생명력 흡수': 'LIFESTEAL',
     '뽑을시': 'TOPDECK',
+    '잔상': 'ECHO',
+    '속공': 'RUSH',
+    '개전': 'START_OF_GAME',
+    '예비 부품': 'SPARE_PART',
     '광풍': 'MEGA_WINDFURY',
 }
 
