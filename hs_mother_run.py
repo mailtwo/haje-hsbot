@@ -59,8 +59,11 @@ def process_message(mode, sc, proc, msg, user=None):
     
     elif argv[0] == '에러로그':
         f_str = '읽는 중 에러'
-        with open('error.log', 'r', encoding='utf-8') as f:
-            f_str = f.read()
+        if os.path.exists('error.log'):
+            with open('error.log', 'r', encoding='utf-8') as f:
+                f_str = f.read()
+        else:
+            f_str = 'error.log가 없습니다.'
         sc.api_call(
             'chat.postMessage',
             username='하스봇엄마',
@@ -70,8 +73,11 @@ def process_message(mode, sc, proc, msg, user=None):
         )
     elif argv[0] == '크리티컬에러로그':
         f_str = '읽는 중 에러'
-        with open('critical_error.log', 'r', encoding='utf-8') as f:
-            f_str = f.read()
+        if os.path.exists('critical_error.log'):
+            with open('critical_error.log', 'r', encoding='utf-8') as f:
+                f_str = f.read()
+        else:
+            f_str = 'critical_error.log가 없습니다.'
         sc.api_call(
             'chat.postMessage',
             channel=user,
