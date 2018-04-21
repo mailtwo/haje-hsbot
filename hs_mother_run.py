@@ -8,7 +8,7 @@ cur_os_type = 'linux'
 if sys.platform.startswith('win'):
     cur_os_type = 'win'
 
-def process_message(mode, sc, channel_id, proc, msg, user=None):
+def process_message(mode, sc, proc, msg, user=None):
     argv = msg.strip().split()
     if argv[0] == '종료':
         if proc is None:
@@ -109,6 +109,8 @@ def main():
         return False
     sc.server.websocket.sock.setblocking(1)
     proc = None
+    if mode == 'release':
+        proc = process_message(mode, sc, proc, '시작', user=None)
     while sc.server.connected:
         msg_list = sc.rtm_read()
         for msg_info in msg_list:
@@ -122,7 +124,7 @@ def main():
             op = '하스봇엄마!'
             if text[:len(op)] != op:
                 continue
-            proc = process_message(mode, sc, channel_id, proc, text[len(op):], user=msg_info['user'])
+            proc = process_message(mode, sc, proc, text[len(op):], user=msg_info['user'])
 
 
 if __name__ == '__main__':
