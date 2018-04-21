@@ -64,7 +64,7 @@ def process_message(mode, sc, channel_id, proc, msg, user=None):
         sc.api_call(
             'chat.postMessage',
             username='하스봇엄마',
-            channel=channel_id,
+            channel=user,
             user=user,
             text=f_str
         )
@@ -74,7 +74,7 @@ def process_message(mode, sc, channel_id, proc, msg, user=None):
             f_str = f.read()
         sc.api_call(
             'chat.postMessage',
-            channel=channel_id,
+            channel=user,
             username='하스봇엄마',
             user=user,
             text=f_str
