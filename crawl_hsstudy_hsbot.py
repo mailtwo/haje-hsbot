@@ -301,8 +301,7 @@ def start_crawling(db_data, db_root):
                     index_data[v] = True
             if 'referencedTags' in card_info:
                 for v in card_info['referencedTags']:
-                    if v not in keyword_keys:
-                        left_keyword.add (v)
+                    if v not in ref_keywords_key:
                         continue
                     index_data[v] = True
             if '*광풍*' in card_info['text']:
