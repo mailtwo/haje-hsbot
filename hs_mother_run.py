@@ -8,7 +8,7 @@ cur_os_type = 'linux'
 if sys.platform.startswith('win'):
     cur_os_type = 'win'
 
-def process_message(mode, proc, msg):
+def process_message(mode, sc, proc, msg, user=None):
     argv = msg.strip().split()
     if argv[0] == '종료':
         if proc is None:
@@ -56,6 +56,27 @@ def process_message(mode, proc, msg):
         if mode == 'debug':
             print (op)
         os.system(op)
+    
+    elif argv[0] == '에러로그':
+        f_str = '읽는 중 에러'
+        with open('error.log', 'r', encoding='utf-8') as f:
+            f_str = f.read()
+        sc.api_call(
+            'chat.postMessage',
+            username='하스봇엄마',
+            user=user,
+            text=f_str
+        )
+    elif argv[0] == '크리티컬에러로그':
+        f_str = '읽는 중 에러'
+        with open('critical_error.log', 'r', encoding='utf-8') as f:
+            f_str = f.read()
+        sc.api_call(
+            'chat.postMessage',
+            username='하스봇엄마',
+            user=user,
+            text=f_str
+        )
 
     return proc
 
@@ -99,7 +120,7 @@ def main():
             op = '하스봇엄마!'
             if text[:len(op)] != op:
                 continue
-            proc = process_message(mode, proc, text[len(op):])
+            proc = process_message(mode, sc, proc, text[len(op):], user=msg_info['user'])
 
 
 if __name__ == '__main__':
