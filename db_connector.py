@@ -406,10 +406,12 @@ class DBConnector(object):
             exactly_match = False
             for idx, each_name in enumerate(name_list):
                 if text_query == each_name:
-                    ret_key = [cur_memdb['key'][idx]]
+                    if not exactly_match:
+                        ret_key = [cur_memdb['key'][idx]]
+                    else:
+                        ret_key.append(cur_memdb['key'][idx])
                     exactly_match = True
-                    break
-                elif text_query in each_name:
+                elif not exactly_match and text_query in each_name:
                     ret_key.append(cur_memdb['key'][idx])
 
             if not exactly_match:
@@ -545,10 +547,10 @@ class DBConnector(object):
     def normalize_text(self, text, cannot_believe=False):
         if cannot_believe:
             table = str.maketrans(dict.fromkeys(' \'\",!?<>();/=+\\|'))
-            return text.translate(table)
+            return text.translate(table).lower()
         else:
             table = str.maketrans(dict.fromkeys(' \',:*_'))
-            return text.translate(table)
+            return text.translate(table).lower()
 
     def insert_alias(self, card_row, card_alias):
         web_id = card_row['web_id']

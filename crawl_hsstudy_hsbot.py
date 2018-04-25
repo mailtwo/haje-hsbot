@@ -278,7 +278,7 @@ def start_crawling(db_data, db_root):
             index_data = {  'web_id': card_info['id'],
                             'orig_name': card_info['name'],
                             'name': preprocess_name(card_info['name']),
-                            'eng_name': card_info['eng_name'],
+                            'eng_name': preprocess_name(card_info['eng_name']),
                             'card_text': card_info['text'],
                             'hero': translate_table['hero'][card_info['cardClass']],
                             'type': translate_table['type'][card_info['type']],
@@ -322,7 +322,7 @@ def start_crawling(db_data, db_root):
 
 def preprocess_name(card_name):
     table = str.maketrans(dict.fromkeys(' \'\",!?<>();/=+-:[]{}*&^%$#@`~\\|'))
-    return card_name.translate(table)
+    return card_name.translate(table).lower()
 
 def retrieve_card_idx(driver, target_url):
     print (target_url)
