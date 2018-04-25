@@ -109,7 +109,7 @@ translate_table = {
         'ADAPT': '적응',
         'QUEST': '퀘스트',
         'BATTLECRY': '전투의 함성',
-        'CANT_BE_TARGETED_BY_SPELLS': '주문 면역',
+        'CANT_BE_TARGETED_BY_SPELLS': '방호',
         'CANT_ATTACK': '공격 불가',
         'LIFESTEAL': '생명력 흡수',
         'TOPDECK': '뽑을시',

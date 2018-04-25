@@ -43,7 +43,7 @@ hs_keywords = {
     '적응': 'ADAPT',
     '퀘스트': 'QUEST',
     '전투의 함성': 'BATTLECRY',
-    '주문 면역': 'CANT_BE_TARGETED_BY_SPELLS',
+    '방호': 'CANT_BE_TARGETED_BY_SPELLS',
     '공격 불가': 'CANT_ATTACK',
     '생명력 흡수': 'LIFESTEAL',
     '뽑을시': 'TOPDECK',
