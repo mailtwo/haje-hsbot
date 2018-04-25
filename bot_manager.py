@@ -53,7 +53,7 @@ class BotManager():
         self.db = DBConnector(mode)
         self.db.load(os.path.join('database', 'card_info.pd'), os.path.join('database', 'alias.pd'))
 
-        self.version = 'V2.2.0'
+        self.version = 'V3.0.0'
         self.sc = None
         self.channel_id = None
         self.filter_channel = None
