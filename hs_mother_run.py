@@ -173,6 +173,8 @@ def main():
                         f.write(ret_text)
                         f.write(traceback.format_exc())
                         f.flush()
+            except TimeoutError as e:
+                pass
         time.sleep(1)
 
 
