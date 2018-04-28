@@ -321,59 +321,62 @@ class BotManager():
         t.start()
         err = 0
         while self.sc.server.connected:
-            msg_list = self.sc.rtm_read()
             try:
-                for msg_info in msg_list:
-                    msg_type = self.detect_msg_type(msg_info)
-                    if msg_type == MSG_TYPE['user_query']:
-                        self.process_user_query(msg_info)
-                    elif msg_type == MSG_TYPE['user_card_text_query']:
-                        self.process_user_query(msg_info, is_text_for_card_text=True)
-                    elif msg_type == MSG_TYPE['in_channel_msg']:
-                        self.process_bot_instruction(msg_info)
-                    elif msg_type == MSG_TYPE['insert_alias']:
-                        text = msg_info['text']
-                        bracket_finder = text.find('[[')
-                        rbracket_finder = text.rfind(']]')
-                        if bracket_finder >= 0 and rbracket_finder < 0:
-                            continue
-                        msg_pair = self.process_insert_alias(text[bracket_finder+2:rbracket_finder])
-                        self.send_msg_pair(msg_pair)
-            except ConnectionAbortedError as e:
-                ret_text = []
-                ret_text.append('오류 발생')
-                ret_text.append(str(sys.exc_info()[0]))
-                ret_text = '\n'.join(ret_text)
-                with open('error.log', 'a+') as f:
-                    f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
-                    f.write(ret_text)
-                    f.write(traceback.format_exc())
-                    f.flush()
-                data_info['stop'] = True
-                t.join()
-                err = 1
-                if self.mode == 'debug':
-                    raise e
-            except Exception as e:
-                ret_text = []
-                ret_text.append('오류 발생')
-                ret_text.append(str(sys.exc_info()[0]))
-                ret_text = '\n'.join(ret_text)
-                with open('error.log', 'a+', encoding='utf-8') as f:
-                    f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
-                    f.write(ret_text)
-                    f.write(traceback.format_exc())
-                    f.flush()
-                msg_pair = MsgPair('simple_txt', ret_text)
-                self.send_msg_pair(msg_pair)
-                data_info['stop'] = True
-                t.join()
-                err = 1
-                if self.mode == 'debug':
-                    raise e
+                msg_list = self.sc.rtm_read()
+                try:
+                    for msg_info in msg_list:
+                        msg_type = self.detect_msg_type(msg_info)
+                        if msg_type == MSG_TYPE['user_query']:
+                            self.process_user_query(msg_info)
+                        elif msg_type == MSG_TYPE['user_card_text_query']:
+                            self.process_user_query(msg_info, is_text_for_card_text=True)
+                        elif msg_type == MSG_TYPE['in_channel_msg']:
+                            self.process_bot_instruction(msg_info)
+                        elif msg_type == MSG_TYPE['insert_alias']:
+                            text = msg_info['text']
+                            bracket_finder = text.find('[[')
+                            rbracket_finder = text.rfind(']]')
+                            if bracket_finder >= 0 and rbracket_finder < 0:
+                                continue
+                            msg_pair = self.process_insert_alias(text[bracket_finder+2:rbracket_finder])
+                            self.send_msg_pair(msg_pair)
+                except ConnectionAbortedError as e:
+                    ret_text = []
+                    ret_text.append('오류 발생')
+                    ret_text.append(str(sys.exc_info()[0]))
+                    ret_text = '\n'.join(ret_text)
+                    with open('error.log', 'a+') as f:
+                        f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
+                        f.write(ret_text)
+                        f.write(traceback.format_exc())
+                        f.flush()
+                    data_info['stop'] = True
+                    t.join()
+                    err = 1
+                    if self.mode == 'debug':
+                        raise e
+                except Exception as e:
+                    ret_text = []
+                    ret_text.append('오류 발생')
+                    ret_text.append(str(sys.exc_info()[0]))
+                    ret_text = '\n'.join(ret_text)
+                    with open('error.log', 'a+', encoding='utf-8') as f:
+                        f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
+                        f.write(ret_text)
+                        f.write(traceback.format_exc())
+                        f.flush()
+                    msg_pair = MsgPair('simple_txt', ret_text)
+                    self.send_msg_pair(msg_pair)
+                    data_info['stop'] = True
+                    t.join()
+                    err = 1
+                    if self.mode == 'debug':
+                        raise e
 
-            if err > 0:
-                return err
+                if err > 0:
+                    return err
+            except TimeoutError as e:
+                pass
 
     def close(self):
         if self.sc is None:
@@ -391,7 +394,6 @@ class BotManager():
                 if text[:4] == '하스봇!':
                     return MSG_TYPE['in_channel_msg']
             return MSG_TYPE['invalid']
-
         text = msg_info['text']
         bracket_finder = text.find('[[')
         if bracket_finder >= 0:

@@ -203,7 +203,7 @@ def start_crawling(db_data, db_root):
         card_info['img_url'] = img_url
         if 'type' in card_info and (card_info['type'] == 'ENCHANTMENT'):
             continue
-        if 'set' in card_info and (card_info['set'] == 'HERO_SKINS' or card_info['set'] == 'TB' or card_info['set'] == 'CREDITS' or card_info['set'] == 'MISSIONS'):
+        if 'set' in card_info and card_info['set'] in ['HERO_SKINS', 'TB', 'CREDITS', 'MISSIONS', 'CHEAT', 'SLUSH', 1003]:
             continue
         if 'name' not in card_info:
             continue
