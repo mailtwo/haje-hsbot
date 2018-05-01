@@ -6,6 +6,7 @@ import subprocess
 import datetime
 import traceback
 from slackclient import SlackClient
+from websocket import WebSocketTimeoutException
 
 cur_os_type = 'linux'
 if sys.platform.startswith('win'):
@@ -138,43 +139,46 @@ def main():
 
     proc = None
     while True:
-        sc = SlackClient(token_id)
-        if not sc.rtm_connect():
-            print('Error while sc.rtm_connect()')
-            return False
-        sc.server.websocket.sock.setblocking(1)
-        if mode == 'release' and proc is None:
-            proc = process_message(mode, sc, proc, '시작', user=None)
-        while sc.server.connected:
-            msg_list = sc.rtm_read()
-            try:
-                for msg_info in msg_list:
-                    if msg_info['type'] != 'message':
-                        continue
-                    if 'user' not in msg_info or msg_info['user'][0] != 'U':
-                        continue
-                    if msg_info['channel'][:2] != 'DA' and msg_info['channel'] != filter_channel:
-                        continue
-                    text = msg_info['text']
-                    op = '하스봇엄마!'
-                    if text[:len(op)] != op:
-                        continue
-                    proc = process_message(mode, sc, proc, text[len(op):], user=msg_info['user'])
-            except Exception as e:
-                if mode == 'debug':
-                    raise e
-                else:
-                    ret_text = []
-                    ret_text.append(str(sys.exc_info()[0]))
-                    ret_text = '\n'.join(ret_text)
-                    with open('motherbot_error.log', 'a+', encoding='utf-8') as f:
-                        f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()),))
-                        f.write('Exception occurred while exception handling!\n')
-                        f.write(ret_text)
-                        f.write(traceback.format_exc())
-                        f.flush()
-            except TimeoutError as e:
-                pass
+        try:
+            sc = SlackClient(token_id)
+            if not sc.rtm_connect():
+                print('Error while sc.rtm_connect()')
+                return False
+            sc.server.websocket.sock.setblocking(1)
+            if mode == 'release' and proc is None:
+                proc = process_message(mode, sc, proc, '시작', user=None)
+            while sc.server.connected:
+                msg_list = sc.rtm_read()
+                try:
+                    for msg_info in msg_list:
+                        if msg_info['type'] != 'message':
+                            continue
+                        if 'user' not in msg_info or msg_info['user'][0] != 'U':
+                            continue
+                        if msg_info['channel'][:2] != 'DA' and msg_info['channel'] != filter_channel:
+                            continue
+                        text = msg_info['text']
+                        op = '하스봇엄마!'
+                        if text[:len(op)] != op:
+                            continue
+                        proc = process_message(mode, sc, proc, text[len(op):], user=msg_info['user'])
+                except Exception as e:
+                    if mode == 'debug':
+                        raise e
+                    else:
+                        ret_text = []
+                        ret_text.append(str(sys.exc_info()[0]))
+                        ret_text = '\n'.join(ret_text)
+                        with open('motherbot_error.log', 'a+', encoding='utf-8') as f:
+                            f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()),))
+                            f.write('Exception occurred while exception handling!\n')
+                            f.write(ret_text)
+                            f.write(traceback.format_exc())
+                            f.flush()
+        except TimeoutError as e:
+            pass
+        except WebSocketTimeoutException as e:
+            pass
         time.sleep(1)
 
 

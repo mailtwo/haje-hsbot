@@ -321,41 +321,41 @@ class BotManager():
         t.start()
         err = 0
         while self.sc.server.connected:
+            msg_list = self.sc.rtm_read()
             try:
-                msg_list = self.sc.rtm_read()
-                try:
-                    for msg_info in msg_list:
-                        msg_type = self.detect_msg_type(msg_info)
-                        if msg_type == MSG_TYPE['user_query']:
-                            self.process_user_query(msg_info)
-                        elif msg_type == MSG_TYPE['user_card_text_query']:
-                            self.process_user_query(msg_info, is_text_for_card_text=True)
-                        elif msg_type == MSG_TYPE['in_channel_msg']:
-                            self.process_bot_instruction(msg_info)
-                        elif msg_type == MSG_TYPE['insert_alias']:
-                            text = msg_info['text']
-                            bracket_finder = text.find('[[')
-                            rbracket_finder = text.rfind(']]')
-                            if bracket_finder >= 0 and rbracket_finder < 0:
-                                continue
-                            msg_pair = self.process_insert_alias(text[bracket_finder+2:rbracket_finder])
-                            self.send_msg_pair(msg_pair)
-                except ConnectionAbortedError as e:
-                    ret_text = []
-                    ret_text.append('오류 발생')
-                    ret_text.append(str(sys.exc_info()[0]))
-                    ret_text = '\n'.join(ret_text)
-                    with open('error.log', 'a+') as f:
-                        f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
-                        f.write(ret_text)
-                        f.write(traceback.format_exc())
-                        f.flush()
-                    data_info['stop'] = True
-                    t.join()
-                    err = 1
-                    if self.mode == 'debug':
-                        raise e
-                except Exception as e:
+                for msg_info in msg_list:
+                    msg_type = self.detect_msg_type(msg_info)
+                    if msg_type == MSG_TYPE['user_query']:
+                        self.process_user_query(msg_info)
+                    elif msg_type == MSG_TYPE['user_card_text_query']:
+                        self.process_user_query(msg_info, is_text_for_card_text=True)
+                    elif msg_type == MSG_TYPE['in_channel_msg']:
+                        self.process_bot_instruction(msg_info)
+                    elif msg_type == MSG_TYPE['insert_alias']:
+                        text = msg_info['text']
+                        bracket_finder = text.find('[[')
+                        rbracket_finder = text.rfind(']]')
+                        if bracket_finder >= 0 and rbracket_finder < 0:
+                            continue
+                        msg_pair = self.process_insert_alias(text[bracket_finder+2:rbracket_finder])
+                        self.send_msg_pair(msg_pair)
+            except ConnectionAbortedError as e:
+                ret_text = []
+                ret_text.append('오류 발생')
+                ret_text.append(str(sys.exc_info()[0]))
+                ret_text = '\n'.join(ret_text)
+                with open('error.log', 'a+') as f:
+                    f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
+                    f.write(ret_text)
+                    f.write(traceback.format_exc())
+                    f.flush()
+                data_info['stop'] = True
+                t.join()
+                err = 1
+                if self.mode == 'debug':
+                    raise e
+            except Exception as e:
+                if not isinstance(e, TimeoutError):
                     ret_text = []
                     ret_text.append('오류 발생')
                     ret_text.append(str(sys.exc_info()[0]))
@@ -372,11 +372,11 @@ class BotManager():
                     err = 1
                     if self.mode == 'debug':
                         raise e
+                else:
+                    print('timeout2')
 
-                if err > 0:
-                    return err
-            except TimeoutError as e:
-                pass
+            if err > 0:
+                return err
 
     def close(self):
         if self.sc is None:
@@ -395,40 +395,20 @@ class BotManager():
                     return MSG_TYPE['in_channel_msg']
             return MSG_TYPE['invalid']
         text = msg_info['text']
-        bracket_finder = text.find('[[')
-        if bracket_finder >= 0:
-            rbracket_finder = text.rfind(']]')
-            if rbracket_finder >= 0:
-                middle_text = text[bracket_finder+2:rbracket_finder]
-                if '=' in middle_text:
-                    return MSG_TYPE['insert_alias']
-                else:
-                    return MSG_TYPE['user_query']
-            return MSG_TYPE['invalid']
-
-        paren_finder = text.find('((')
-        if paren_finder >= 0:
-            rparen_finder = text.rfind('))')
-            if rparen_finder >= 0:
-                return MSG_TYPE['user_card_text_query']
-            return MSG_TYPE['invalid']
+        if text[:2] == '[[' and text[-2:] == ']]':
+            if '=' in text:
+                return MSG_TYPE['insert_alias']
+            else:
+                return MSG_TYPE['user_query']
+        elif text[:2] == '((' and text[-2:] == '))':
+            return MSG_TYPE['user_card_text_query']
         elif text[:4] == '하스봇!':
             return MSG_TYPE['in_channel_msg']
         return MSG_TYPE['invalid']
 
     def process_user_query(self, msg_info, is_text_for_card_text=False):
         text = msg_info['text']
-        if not is_text_for_card_text:
-            bracket_finder = text.find('[[')
-            rbracket_finder = text.rfind(']]')
-        else:
-            bracket_finder = text.find('((')
-            rbracket_finder = text.rfind('))')
-
-        if bracket_finder < 0 or rbracket_finder < 0:
-            return
-
-        user_query = text[bracket_finder+2:rbracket_finder]
+        user_query = text[2:-2]
         stat_query, text_query, err = self.db.parse_user_request(user_query)
         if stat_query is None:
             ret_text = self._err_code_to_str(err)
