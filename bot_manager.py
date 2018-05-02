@@ -372,8 +372,6 @@ class BotManager():
                     err = 1
                     if self.mode == 'debug':
                         raise e
-                else:
-                    print('timeout2')
 
             if err > 0:
                 return err
@@ -395,20 +393,43 @@ class BotManager():
                     return MSG_TYPE['in_channel_msg']
             return MSG_TYPE['invalid']
         text = msg_info['text']
-        if text[:2] == '[[' and text[-2:] == ']]':
-            if '=' in text:
-                return MSG_TYPE['insert_alias']
-            else:
-                return MSG_TYPE['user_query']
-        elif text[:2] == '((' and text[-2:] == '))':
-            return MSG_TYPE['user_card_text_query']
+        bracket_finder = text.find('[[')
+        if bracket_finder >= 0:
+            rbracket_finder = text.rfind(']]')
+            if rbracket_finder >= 0:
+                middle_text = text[bracket_finder + 2:rbracket_finder]
+                if '=' in middle_text:
+                    return MSG_TYPE['insert_alias']
+                else:
+                    return MSG_TYPE['user_query']
+            return MSG_TYPE['invalid']
+
+        paren_finder = text.find('((')
+        if paren_finder >= 0:
+            rparen_finder = text.rfind('))')
+            if rparen_finder >= 0:
+                return MSG_TYPE['user_card_text_query']
         elif text[:4] == '하스봇!':
             return MSG_TYPE['in_channel_msg']
         return MSG_TYPE['invalid']
 
     def process_user_query(self, msg_info, is_text_for_card_text=False):
         text = msg_info['text']
-        user_query = text[2:-2]
+        if not is_text_for_card_text:
+            bracket_finder = text.find('[[')
+            rbracket_finder = text.rfind(']]')
+        else:
+            bracket_finder = text.find('((')
+            rbracket_finder = text.rfind('))')
+
+        if bracket_finder < 0 or rbracket_finder < 0:
+            return
+
+        text = text[bracket_finder:rbracket_finder+2]
+        bracket_finder = 0
+        rbracket_finder = len(text)-2
+
+        user_query = text[bracket_finder + 2:rbracket_finder]
         stat_query, text_query, err = self.db.parse_user_request(user_query)
         if stat_query is None:
             ret_text = self._err_code_to_str(err)
