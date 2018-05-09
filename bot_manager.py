@@ -484,6 +484,8 @@ class BotManager():
             text = ' '.join(arg_list[1:])
             msg_pair = self.process_update_alias(arg_list)
             self.send_msg_pair(msg_pair)
+        elif arg_list[0] == '핑':
+            self.send_message('퐁', msg_info['user'])
 
     def process_insert_alias(self, text):
         sep_idx = text.find('=')
