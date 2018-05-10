@@ -276,8 +276,7 @@ class BotManager():
 
     def connect(self):
         assert self.slack_token is not None
-        if self.sc is None:
-            self.sc = SlackClient(self.slack_token)
+        self.sc = SlackClient(self.slack_token)
 
         if not self.sc.rtm_connect():
             print('Error while sc.rtm_connect()')
