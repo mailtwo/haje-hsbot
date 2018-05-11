@@ -282,7 +282,7 @@ class BotManager():
             print('Error while sc.rtm_connect()')
             return False
 
-        self.sc.server.websocket.sock.setblocking(1)
+        # self.sc.server.websocket.sock.setblocking(1)
         print('Start running...')
         return True
 
@@ -338,6 +338,7 @@ class BotManager():
                             continue
                         msg_pair = self.process_insert_alias(text[bracket_finder+2:rbracket_finder])
                         self.send_msg_pair(msg_pair)
+                time.sleep(0.1)
             except ConnectionAbortedError as e:
                 ret_text = []
                 ret_text.append('오류 발생')

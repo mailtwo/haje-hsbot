@@ -144,7 +144,6 @@ def main():
             if not sc.rtm_connect():
                 print('Error while sc.rtm_connect()')
                 return False
-            sc.server.websocket.sock.setblocking(1)
             if mode == 'release' and proc is None:
                 proc = process_message(mode, sc, proc, '시작', user=None)
             while sc.server.connected:
@@ -162,6 +161,7 @@ def main():
                         if text[:len(op)] != op:
                             continue
                         proc = process_message(mode, sc, proc, text[len(op):], user=msg_info['user'])
+                    time.sleep(0.1)
                 except Exception as e:
                     if mode == 'debug':
                         raise e
