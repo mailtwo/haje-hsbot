@@ -60,6 +60,7 @@ translate_table = {
         'LOOTA': '코볼트 모험모드',
         'GILNEAS': '마녀숲',
         'GILA': '마녀숲 모험모드',
+        'TAVERNS_OF_TIME': '시간의 선술집',
     },
     'adventure': {
         'NAX': 'NAXA',

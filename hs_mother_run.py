@@ -89,7 +89,13 @@ def process_message(mode, sc, proc, msg, user=None):
         f_str = '읽는 중 에러'
         if os.path.exists('error.log'):
             with open('error.log', 'r', encoding='utf-8') as f:
-                f_str = f.read()
+                f_str = f.readlines()
+                start_idx = 0
+                for start_idx in range(len(f_str)-1, -1, -1):
+                    if f_str[start_idx][:5] == '=====':
+                        break
+                if start_idx < 0: start_idx = 0
+                f_str = '\n'.join(f_str[start_idx:])
         else:
             f_str = 'error.log가 없습니다.'
         sc.api_call(
@@ -103,7 +109,13 @@ def process_message(mode, sc, proc, msg, user=None):
         f_str = '읽는 중 에러'
         if os.path.exists('critical_error.log'):
             with open('critical_error.log', 'r', encoding='utf-8') as f:
-                f_str = f.read()
+                f_str = f.readlines()
+                start_idx = 0
+                for start_idx in range(len(f_str)-1, -1, -1):
+                    if f_str[start_idx][:5] == '=====':
+                        break
+                if start_idx < 0: start_idx = 0
+                f_str = '\n'.join(f_str[start_idx:])
         else:
             f_str = 'critical_error.log가 없습니다.'
         sc.api_call(
