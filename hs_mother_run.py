@@ -191,6 +191,9 @@ def main():
             pass
         except WebSocketTimeoutException as e:
             pass
+        except:
+            time.sleep(60)
+            pass
         time.sleep(1)
 
 

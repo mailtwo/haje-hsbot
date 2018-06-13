@@ -6,6 +6,7 @@ from bot_manager import BotManager, MsgPair
 from websocket import WebSocketTimeoutException
 
 def run_program(mode):
+    critical_writen = False
     bot_mgr = BotManager(mode)
     success = bot_mgr.load_bot_token('bot_token.json')
     if not success:
@@ -36,12 +37,15 @@ def run_program(mode):
                 else:
                     err_count += 1
                 if err_count >= 3:
-                    with open('critical_error.log', 'a+') as f:
-                        f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
-                        f.write('System emergency stop; too many errors\n')
-                        f.write('timediff: %d s' % (cur_time - err_start))
-                        f.flush()
-                    return 1
+                    if critical_writen == False:
+                        with open('critical_error.log', 'a+') as f:
+                            f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
+                            f.write('System emergency stop; too many errors\n')
+                            f.write('timediff: %d s' % (cur_time - err_start))
+                            f.flush()
+                        critical_writen = True
+                    time.sleep(60)
+                    err_count = 0
         except TimeoutError as e:
             is_init = False
         except WebSocketTimeoutException as e:
@@ -60,7 +64,7 @@ def main():
     try:
         ret_code = run_program(mode)
         print('Return code: %d. Terminate program...' % (ret_code, ))
-    except Exception as e:
+    except:
         if mode == 'debug':
             raise e
         else:
@@ -73,6 +77,7 @@ def main():
                 f.write(ret_text)
                 f.write(traceback.format_exc())
                 f.flush()
+            time.sleep(60)
 
 
 if __name__ == '__main__':
