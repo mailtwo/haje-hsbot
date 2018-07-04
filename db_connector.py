@@ -375,7 +375,7 @@ class DBConnector(object):
                     query_str.append('(' + (' & '.join(cur_value_query)) + ')')
 
 
-        print (stat_query)
+        # print (stat_query)
         if len(query_str) > 0:
             query_str = ' & '.join(query_str)
             if self.mode == 'debug':
