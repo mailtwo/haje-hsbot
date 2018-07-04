@@ -297,9 +297,23 @@ class DBConnector(object):
             if len(expansion) > 0:
                 stat_query['expansion'] = expansion
         if ('race' in stat_query):
-            stat_query['race'].append({'value': '모두', 'neg': False, 'op': 'eq'})
+            pos_inc = False
+            for q in stat_query['race']:
+                if q['neg'] == False:
+                    pos_inc = True
+                    break
+            if pos_inc:
+                stat_query['race'].append({'value': '모두', 'neg': False, 'op': 'eq'})
+            else:
+                stat_query['race'].append({'value': '모두', 'neg': True, 'op': 'eq'})
 
         for k, t_list in stat_query.items():
+            pos_inc = False
+            for token in t_list:
+                if token['neg'] == False:
+                    pos_inc = True
+                    break
+
             cur_value_query = []
             if k in self.card_db_col:
                 if len(t_list) == 0:
@@ -321,7 +335,7 @@ class DBConnector(object):
                         if -10000 < v < 10000:
                             cur_value_query.append('%s(%s %s %s)' % ('not ' if token['neg'] else '', k, op, str(v)))
                     else:
-                        cur_value_query.append('%s %s \"%s\"' % (k, op, v))
+                        cur_value_query.append('%s(%s %s \"%s\")' % ('not ' if token['neg'] else '', k, op, v))
 
             elif k == 'keyword':
                 for token in t_list:
@@ -355,10 +369,13 @@ class DBConnector(object):
                                                                             'health', low, 'health', high))
 
             if len(cur_value_query) > 0:
-                query_str.append('(' + (' | '.join(cur_value_query)) + ')')
+                if pos_inc:
+                    query_str.append('(' + (' | '.join(cur_value_query)) + ')')
+                else:
+                    query_str.append('(' + (' & '.join(cur_value_query)) + ')')
 
 
-        # print (stat_query)
+        print (stat_query)
         if len(query_str) > 0:
             query_str = ' & '.join(query_str)
             if self.mode == 'debug':
