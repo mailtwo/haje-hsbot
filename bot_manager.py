@@ -132,6 +132,9 @@ class BotManager():
         add_text_gp = {}
         add_wo_url_gp = {}
         add_text_valid = {}
+        exact_match = False
+        if not group_df[hs_expansion_priority[0]].empty:
+            exact_match = True
         for group_key, df in group_df.items():
             add_text = '그 외 %d 장의 %s 카드%s 검색되었습니다' % (df.shape[0], group_key, ('가' if df.shape[0] == 1 else '들이'))
             add_text_wo_url = add_text
@@ -172,7 +175,9 @@ class BotManager():
                 stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
             elif card['type'] == '주문' or card['type'] == '영웅 교체':
                 stat_text = '%d코스트' % (card['cost'], )
-            faction_text = '%s %s %s%s카드' % (card['expansion'], card['hero'], card['rarity'], ' ' if len(card['rarity']) > 0 else '')
+            faction_text = '%s%s %s %s%s카드' % (('' if (not exact_match) else '(!) '),
+                                               card['expansion'], card['hero'], card['rarity'],
+                                               (' ' if len(card['rarity']) > 0 else ''))
             stat_text = '%s %s%s%s' % (stat_text, card['race'], ' ' if len(card['race']) > 1 else '', card['type'])
             card_info = {
                 'author_name': faction_text + '\n'+stat_text,
