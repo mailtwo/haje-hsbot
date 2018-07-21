@@ -9,11 +9,12 @@ alias_db_col = ['web_id', 'alias']
 #                '퀘스트:', '보상', '보상:', '생명력 흡수', '소집', '개전', '속공', '잔상']
 hs_races = ['멀록', '악마', '야수', '용족', '토템', '해적', '기계', '정령', '모두']
 hs_expansion_group = {
+    '정확': [],
     '정규': ['코볼트', '얼어붙은 왕좌', '운고로', '마녀숲', '오리지널', '기본'],
     '야생': ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹', '가젯잔', '카라잔', '고대 신'],
     '모험모드': ['낙스라마스 모험모드', '검은바위 산 모험모드', '탐험가 연맹 모험모드', '카라잔 모험모드', '얼어붙은 왕좌 모험모드', '코볼트 모험모드', '마녀숲 모험모드', '시간의 선술집']
 }
-hs_expansion_priority = ['정규', '야생', '모험모드']
+hs_expansion_priority = ['정확', '정규', '야생', '모험모드']
 hs_keywords = {
     '소집': 'RECRUIT',
     '돌진': 'CHARGE',
@@ -394,6 +395,8 @@ class DBConnector(object):
     def query_text(self, query_table, stat_query, text_query):
         text_query = text_query.strip()
         group_df = {}
+        exactly_match = False
+        exactly_key = []
         for k in hs_expansion_group.keys():
             group_df[k] = pd.DataFrame(columns=self.card_db_col)
         if len(text_query) == 0:
@@ -421,22 +424,17 @@ class DBConnector(object):
             else:
                 name_list = cur_memdb['name']
             ret_key = []
-            exactly_match = False
             for idx, each_name in enumerate(name_list):
                 if text_query == each_name:
-                    if not exactly_match:
-                        ret_key = [cur_memdb['key'][idx]]
-                    else:
-                        ret_key.append(cur_memdb['key'][idx])
+                    exactly_key = [cur_memdb['key'][idx]]
                     exactly_match = True
-                elif not exactly_match and text_query in each_name:
+                if text_query in each_name:
                     ret_key.append(cur_memdb['key'][idx])
 
-            if not exactly_match:
-                name_list = cur_alias_mem_db['name']
-                for idx, each_name in enumerate(name_list):
-                    if text_query in each_name:
-                        ret_key.append(cur_alias_mem_db['web_id'][idx])
+            name_list = cur_alias_mem_db['name']
+            for idx, each_name in enumerate(name_list):
+                if text_query in each_name:
+                    ret_key.append(cur_alias_mem_db['web_id'][idx])
 
             query_table = self._faster_isin(self.card_db, ret_key)
             query_table.drop_duplicates(subset='web_id', keep='last', inplace=True)
@@ -458,6 +456,13 @@ class DBConnector(object):
                         query_table = group_df[k]
                         break
 
+
+        if exactly_match and \
+                (('expansion_group' not in stat_query) and ('expansion' not in stat_query)):
+            query_table = self._faster_isin(self.card_db, exactly_key)
+            query_table.drop_duplicates(subset='web_id', keep='last', inplace=True)
+            assert(hs_expansion_priority[0] == '정확')
+            group_df[hs_expansion_priority[0]] = query_table
         return query_table, group_df
 
     def query_text_in_card_text(self, query_table, stat_query, text_query):

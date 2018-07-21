@@ -9,6 +9,7 @@ import traceback
 import datetime
 from slackclient import SlackClient
 from db_connector import DBConnector
+from db_connector import hs_expansion_priority
 
 
 MSG_TYPE = {
@@ -19,7 +20,6 @@ MSG_TYPE = {
     'user_card_text_query': 4
 }
 file_db_col = ['date', 'file_id']
-hs_expansion_priority = ['정규', '야생', '모험모드']
 
 def get_namelist_length(name_list):
     max_str_len = 0
@@ -66,7 +66,7 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = 'The Darkness'
+        # user_query = '사냥개'
         # stat_query, text_query, err_msg = self.db.parse_user_request(user_query)
         # print (stat_query, text_query, err_msg)
         # inner_result = None
