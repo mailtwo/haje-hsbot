@@ -51,9 +51,14 @@ class BotManager():
     def __init__(self, mode):
         self.mode = mode
         self.db = DBConnector(mode)
-        self.db.load(os.path.join('database', 'card_info.pd'), os.path.join('database', 'alias.pd'))
+        self.new_cards_path = new_cards_path = os.path.join('database', 'new_cards.pd')
+        if not os.path.exists(new_cards_path):
+            new_cards_path = None
+        self.db.load([os.path.join('database', 'card_info.pd')],
+                     os.path.join('database', 'alias.pd'),
+                     new_cards_path)
 
-        self.version = 'V3.0.0'
+        self.version = 'V3.5.0'
         self.sc = None
         self.channel_id = None
         self.filter_channel = None
@@ -175,7 +180,7 @@ class BotManager():
                 stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
             elif card['type'] == '주문' or card['type'] == '영웅 교체':
                 stat_text = '%d코스트' % (card['cost'], )
-            faction_text = '%s%s %s %s%s카드' % (('' if (not exact_match) else '(!) '),
+            faction_text = '%s%s %s %s%s카드' % (('' if (not exact_match) else '- '),
                                                card['expansion'], card['hero'], card['rarity'],
                                                (' ' if len(card['rarity']) > 0 else ''))
             stat_text = '%s %s%s%s' % (stat_text, card['race'], ' ' if len(card['race']) > 1 else '', card['type'])
@@ -489,6 +494,10 @@ class BotManager():
             text = ' '.join(arg_list[1:])
             msg_pair = self.process_update_alias(arg_list)
             self.send_msg_pair(msg_pair)
+        elif arg_list[0] == '카드등록':
+            text = ' '.join(arg_list[1:])
+            msg_pair = self.process_add_card(arg_list, msg_info['user'])
+            self.send_msg_pair(msg_pair)
         elif arg_list[0] == '핑':
             self.send_message('퐁', msg_info['user'])
 
@@ -593,11 +602,28 @@ class BotManager():
         alias_to = ''.join(arg_list[2:])
         alias_to = self.db.normalize_text(alias_to.strip(), cannot_believe=True)
 
-        result = self.db.update_alis(alias_id, alias_to)
+        result = self.db.update_alias(alias_id, alias_to)
         if result == 'empty':
             return MsgPair('simple_txt', '아이디에 해당하는 별명을 찾을 수 없습니다.')
         self.db.flush_alias_db()
         return MsgPair('simple_txt', '성공적으로 업데이트되었습니다.')
+
+    def process_add_card(self, arg_list, user_id):
+        if len(arg_list) < 2:
+            table_col = ', \n'.join(['\"' + str(c) + '\": ' for c in self.db.card_db.columns])
+            table_col = '{ ' + table_col + ' }'
+            self.send_message('카드 정보를 입력해주세요.\n' + table_col, user_id)
+        else:
+            card_json = ' '.join(arg_list[1:])
+            card_info = None
+            try:
+                card_info = json.loads(card_json)
+            except json.JSONDecodeError as e:
+                self.send_message('카드 정보를 JSON으로 변환할 수 없습니다.', user_id)
+                return None
+            self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path)
+            self.send_message('성공적으로 등록되었습니다.', user_id)
+        return None
 
     def send_msg_pair(self, msg_pair, args=None):
         if msg_pair is not None:

@@ -123,6 +123,15 @@ class DBConnector(object):
                               '선택:': '선택 -'}
         self.card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
         self.card_db_col += list(hs_keywords.values())
+        self.new_expansion_name = '폭심만만'
+        self.new_expansion_id = 'BOOM'
+        self.new_expansion_img = 'https://d2q63o9r0h0ohi.cloudfront.net/images/the-boomsday-project/ko-kr/logo@2x-833c15ebac3668ec08ab3cc98d26c59dc635705af87309f4181b5f1b7922546082ca4b699b25e311301a42ec3dffb4c65b939654832a36fa0fd9ff75c5209523.png'
+        self.new_card_count = 0
+
+        if self.new_expansion_name is not None:
+            self.standard_filter.append(self.new_expansion_name)
+            self.expansion_alias[self.new_expansion_name] = self.new_expansion_name
+            hs_expansion_group['정규'].append(self.new_expansion_name)
 
         # self.exp_group_query = {}
         # for k, v in hs_expansion_group.items():
@@ -206,6 +215,29 @@ class DBConnector(object):
                 assert False
             self.parse_word_list[i] = (cond_fun, cond_type, word_type, ret_fun)
 
+
+        default_card_data = {
+            'web_id': self.new_expansion_id + '_' + str(self.new_card_count),
+            'orig_name': '없음',
+            'name': '없음',
+            'eng_name': 'none',
+            'card_text': 'empty',
+            'hero': '중립',
+            'type': '주문',
+            'cost': 0,
+            'attack': 0,
+            'health': 0,
+            'race': '',
+            'rarity': '일반',
+            'expansion': self.new_expansion_name,
+            'img_url': self.new_expansion_img,
+            'detail_url': 'https://playhearthstone.com/ko-kr/'
+        }
+        from crawl_hsstudy_hsbot import keyword_keys
+        for k in keyword_keys:
+            default_card_data[k] = False
+        self.default_card_data = default_card_data
+
     def _compare_word_list_gen(self, cond_list):
         def _inner_fun(word):
             for cond in cond_list:
@@ -230,11 +262,22 @@ class DBConnector(object):
 
 
     # load DataFrame type database from the path
-    def load(self, card_db_path, alias_db_path):
-        assert(os.path.exists(card_db_path))
+    def load(self, card_db_path_list, alias_db_path, new_card_db=None):
+        self.card_db = []
+        for card_db_path in card_db_path_list:
+            assert(os.path.exists(card_db_path))
+            self.card_db.append(pd.read_hdf(card_db_path))
+        self.card_db = pd.concat(self.card_db)
         assert (os.path.exists(alias_db_path))
-        self.card_db = pd.read_hdf(card_db_path)
         self.alias_db = pd.read_hdf(alias_db_path)
+        if new_card_db is not None:
+            assert (os.path.exists(new_card_db))
+            self.new_card_db = pd.read_hdf(new_card_db)
+            if self.new_card_db is not None:
+                self.new_card_count = len(self.new_card_db)
+                self.card_db = pd.concat([self.card_db, self.new_card_db])
+            else:
+                os.remove(new_card_db)
 
         #self.mem_db = self._construct_mem_db(self.card_db)
         self.mem_db = self._construct_mem_db(self.card_db)
@@ -428,8 +471,9 @@ class DBConnector(object):
                 if text_query == each_name:
                     exactly_key = [cur_memdb['key'][idx]]
                     exactly_match = True
-                if text_query in each_name:
-                    ret_key.append(cur_memdb['key'][idx])
+                else:
+                    if text_query in each_name:
+                        ret_key.append(cur_memdb['key'][idx])
 
             name_list = cur_alias_mem_db['name']
             for idx, each_name in enumerate(name_list):
@@ -611,7 +655,7 @@ class DBConnector(object):
         self.alias_mem_db = self._construct_alias_mem_db(self.alias_db)
         return 'success'
 
-    def update_alis(self, alias_id, update_to):
+    def update_alias(self, alias_id, update_to):
         if alias_id not in self.alias_db.index:
             return 'empty'
         self.alias_db.at[alias_id, 'alias'] = update_to
@@ -621,6 +665,34 @@ class DBConnector(object):
     def flush_alias_db(self):
         alias_path = os.path.join('database', 'alias.pd')
         self.alias_db.to_hdf(alias_path, 'df', mode='w', format='table', data_columns=True)
+
+    def add_card_to_db(self, card_info, id_prefix=None, update_pd_path=None):
+        if id_prefix is None:
+            id_prefix = self.new_expansion_id
+
+        new_card_info = self.default_card_data.copy()
+        new_card_info.update(card_info)
+        new_card_info['web_id'] = id_prefix+ '_' + str(self.new_card_count)
+        new_card_info['name'] = self.normalize_text(new_card_info['orig_name'], cannot_believe=True)
+        new_card_info['eng_name'] = self.normalize_text(new_card_info['eng_name'], cannot_believe=True)
+        new_card_info['card_text'] = new_card_info['card_text']
+        new_card_info['cost'] = int(new_card_info['cost'])
+        new_card_info['attack'] = int(new_card_info['attack'])
+        new_card_info['health'] = int(new_card_info['health'])
+        card_info = new_card_info
+        self.card_db = self.card_db.append([pd.DataFrame([card_info], columns=self.card_db.columns)], ignore_index=True)
+        self.card_db.drop_duplicates(subset='web_id', keep='last', inplace=True)
+        self.mem_db = self._construct_mem_db(self.card_db)
+        self.new_card_count += 1
+
+        if update_pd_path is not None:
+            if os.path.exists(update_pd_path):
+                new_pd = pd.read_hdf(update_pd_path)
+                new_pd = new_pd.append([pd.DataFrame([card_info], columns=self.card_db.columns)], ignore_index=True)
+            else:
+                new_pd = pd.DataFrame([card_info], columns=self.card_db.columns)
+            new_pd.drop_duplicates(subset='web_id', keep='last', inplace=True)
+            new_pd.to_hdf(update_pd_path, 'df', mode='w', format='table', data_columns=True)
 
     def _parse_word_test(self, text):
         token_info = {
