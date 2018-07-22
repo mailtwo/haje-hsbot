@@ -274,7 +274,7 @@ class DBConnector(object):
             assert (os.path.exists(new_card_db))
             self.new_card_db = pd.read_hdf(new_card_db)
             if self.new_card_db is not None:
-                self.new_card_count = len(self.new_card_db)
+                self.new_card_count = self.new_card_db.index[-1]
                 self.card_db = pd.concat([self.card_db, self.new_card_db])
             else:
                 os.remove(new_card_db)
@@ -672,13 +672,17 @@ class DBConnector(object):
 
         new_card_info = self.default_card_data.copy()
         new_card_info.update(card_info)
-        new_card_info['web_id'] = id_prefix+ '_' + str(self.new_card_count)
+        if 'web_id' not in card_info:
+            new_card_info['web_id'] = id_prefix+ '_' + str(self.new_card_count)
         new_card_info['name'] = self.normalize_text(new_card_info['orig_name'], cannot_believe=True)
         new_card_info['eng_name'] = self.normalize_text(new_card_info['eng_name'], cannot_believe=True)
         new_card_info['card_text'] = new_card_info['card_text']
         new_card_info['cost'] = int(new_card_info['cost'])
         new_card_info['attack'] = int(new_card_info['attack'])
         new_card_info['health'] = int(new_card_info['health'])
+        if 'mechanics' in new_card_info:
+            for v in new_card_info['mechanics']:
+                new_card_info[v] = True
         card_info = new_card_info
         self.card_db = self.card_db.append([pd.DataFrame([card_info], columns=self.card_db.columns)], ignore_index=True)
         self.card_db.drop_duplicates(subset='web_id', keep='last', inplace=True)

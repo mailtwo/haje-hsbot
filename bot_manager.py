@@ -71,24 +71,24 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '사냥개'
-        # stat_query, text_query, err_msg = self.db.parse_user_request(user_query)
-        # print (stat_query, text_query, err_msg)
-        # inner_result = None
-        # if err_msg is None:
-        #     if len(stat_query.keys()) > 0:
-        #         inner_result = self.db.query_stat(stat_query)
-        #         print(inner_result.shape[0])
-        #     card, group_df = self.db.query_text(inner_result, stat_query, text_query)
-        #     print(card.shape[0], [df.shape[0] for df in group_df.values()])
-        #     print('--- %s ---' % ('기본 출력', ))
-        #     for idx, row in card.iterrows():
-        #         print(row['orig_name'], row['expansion'])
-        #     for key, df in group_df.items():
-        #         print('--- %s ---' % (key, ))
-        #         for idx, row in df.iterrows():
-        #             print(row['orig_name'], row['expansion'])
-        # return
+        user_query = '폭심만만 속공'
+        stat_query, text_query, err_msg = self.db.parse_user_request(user_query)
+        print (stat_query, text_query, err_msg)
+        inner_result = None
+        if err_msg is None:
+            if len(stat_query.keys()) > 0:
+                inner_result = self.db.query_stat(stat_query)
+                print(inner_result.shape[0])
+            card, group_df = self.db.query_text(inner_result, stat_query, text_query)
+            print(card.shape[0], [df.shape[0] for df in group_df.values()])
+            print('--- %s ---' % ('기본 출력', ))
+            for idx, row in card.iterrows():
+                print(row['orig_name'], row['expansion'])
+            for key, df in group_df.items():
+                print('--- %s ---' % (key, ))
+                for idx, row in df.iterrows():
+                    print(row['orig_name'], row['expansion'])
+        return
         # self.process_bot_instruction({'text': '하스봇! 삭제 1'})
 
     def _read_help_file(self, fp):
@@ -495,8 +495,7 @@ class BotManager():
             msg_pair = self.process_update_alias(arg_list)
             self.send_msg_pair(msg_pair)
         elif arg_list[0] == '카드등록':
-            text = ' '.join(arg_list[1:])
-            msg_pair = self.process_add_card(arg_list, msg_info['user'])
+            msg_pair = self.process_add_card(text[4:].strip().split(' '), msg_info['user'])
             self.send_msg_pair(msg_pair)
         elif arg_list[0] == '핑':
             self.send_message('퐁', msg_info['user'])
