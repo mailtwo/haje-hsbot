@@ -697,6 +697,7 @@ class DBConnector(object):
                 new_pd = pd.DataFrame([card_info], columns=self.card_db.columns)
             new_pd.drop_duplicates(subset='web_id', keep='last', inplace=True)
             new_pd.to_hdf(update_pd_path, 'df', mode='w', format='table', data_columns=True)
+            self.new_card_db = new_pd
 
     def _parse_word_test(self, text):
         token_info = {

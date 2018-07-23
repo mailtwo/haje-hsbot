@@ -497,6 +497,9 @@ class BotManager():
         elif arg_list[0] == '카드등록':
             msg_pair = self.process_add_card(text[4:].strip().split(' '), msg_info['user'])
             self.send_msg_pair(msg_pair)
+        elif arg_list[0] == '카드보기':
+            msg_pair = self.process_view_card(msg_info['user'])
+            self.send_msg_pair(msg_pair)
         elif arg_list[0] == '핑':
             self.send_message('퐁', msg_info['user'])
 
@@ -622,6 +625,13 @@ class BotManager():
                 return None
             self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path)
             self.send_message('성공적으로 등록되었습니다.', user_id)
+        return None
+
+    def process_view_card(self, user_id):
+        row_strs = []
+        for row in self.db.new_card_db.iterrows():
+            row_strs.append('%s: %s' % (row['web_id'], row['orig_name']))
+        self.send_message('\n'.join(row_strs), user_id)
         return None
 
     def send_msg_pair(self, msg_pair, args=None):
