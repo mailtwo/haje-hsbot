@@ -629,9 +629,10 @@ class BotManager():
 
     def process_view_card(self, user_id):
         row_strs = []
-        for row in self.db.new_card_db.iterrows():
-            row_strs.append('%s: %s' % (row['web_id'], row['orig_name']))
-        self.send_message('\n'.join(row_strs), user_id)
+        if self.db.new_card_db is not None:
+            for row in self.db.new_card_db.iterrows():
+                row_strs.append('%s: %s' % (row['web_id'], row['orig_name']))
+            self.send_message('\n'.join(row_strs), user_id)
         return None
 
     def send_msg_pair(self, msg_pair, args=None):
