@@ -127,6 +127,7 @@ class DBConnector(object):
         self.new_expansion_id = 'BOOM'
         self.new_expansion_img = 'https://d2q63o9r0h0ohi.cloudfront.net/images/the-boomsday-project/ko-kr/logo@2x-833c15ebac3668ec08ab3cc98d26c59dc635705af87309f4181b5f1b7922546082ca4b699b25e311301a42ec3dffb4c65b939654832a36fa0fd9ff75c5209523.png'
         self.new_card_count = 0
+        self.new_card_db = None
 
         if self.new_expansion_name is not None:
             self.standard_filter.append(self.new_expansion_name)
