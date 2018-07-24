@@ -612,7 +612,7 @@ class BotManager():
 
     def process_add_card(self, arg_list, user_id):
         if len(arg_list) < 2:
-            table_col = ', \n'.join(['\"' + str(c) + '\": ' for c in self.db.card_db.columns])
+            table_col = ', \n'.join(['\"' + str(c) + '\": ' for c in self.db.default_card_data.keys()])
             table_col = '{ ' + table_col + ' }'
             self.send_message('카드 정보를 입력해주세요.\n' + table_col, user_id)
         else:

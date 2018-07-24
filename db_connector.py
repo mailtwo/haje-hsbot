@@ -231,12 +231,13 @@ class DBConnector(object):
             'race': '',
             'rarity': '일반',
             'expansion': self.new_expansion_name,
+            'mechanics': [],
             'img_url': self.new_expansion_img,
             'detail_url': 'https://playhearthstone.com/ko-kr/'
         }
         from crawl_hsstudy_hsbot import keyword_keys
         for k in keyword_keys:
-            default_card_data[k] = False
+            default_card_data['mechanics'].append(k)
         self.default_card_data = default_card_data
 
     def _compare_word_list_gen(self, cond_list):
@@ -275,7 +276,13 @@ class DBConnector(object):
             assert (os.path.exists(new_card_db))
             self.new_card_db = pd.read_hdf(new_card_db)
             if self.new_card_db is not None:
-                self.new_card_count = self.new_card_db.index[-1]
+                ids = self.new_card_db['web_id']
+                max_val = -1
+                for idx, c in enumerate(ids):
+                    cur_val = int(c[c.find('_')+1:])
+                    if cur_val > max_val:
+                        max_val = cur_val
+                self.new_card_count = max_val + 1
                 self.card_db = pd.concat([self.card_db, self.new_card_db])
             else:
                 os.remove(new_card_db)
