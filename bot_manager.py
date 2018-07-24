@@ -71,15 +71,15 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        user_query = '폭심만만 속공'
-        stat_query, text_query, err_msg = self.db.parse_user_request(user_query)
+        user_query = '야수 정령'
+        stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
         print (stat_query, text_query, err_msg)
         inner_result = None
         if err_msg is None:
             if len(stat_query.keys()) > 0:
                 inner_result = self.db.query_stat(stat_query)
                 print(inner_result.shape[0])
-            card, group_df = self.db.query_text(inner_result, stat_query, text_query)
+            card, group_df = self.db.query_text(inner_result, stat_query, text_query, raw_query)
             print(card.shape[0], [df.shape[0] for df in group_df.values()])
             print('--- %s ---' % ('기본 출력', ))
             for idx, row in card.iterrows():
@@ -440,7 +440,7 @@ class BotManager():
         rbracket_finder = len(text)-2
 
         user_query = text[bracket_finder + 2:rbracket_finder]
-        stat_query, text_query, err = self.db.parse_user_request(user_query)
+        stat_query, text_query, raw_query, err = self.db.parse_user_request(user_query)
         if stat_query is None:
             ret_text = self._err_code_to_str(err)
             self.send_msg_pair(MsgPair('simple_txt', ret_text))
@@ -450,7 +450,7 @@ class BotManager():
         if len(stat_query.keys()) > 0:
             inner_result = self.db.query_stat(stat_query)
         if not is_text_for_card_text:
-            cards, group_df = self.db.query_text(inner_result, stat_query, text_query)
+            cards, group_df = self.db.query_text(inner_result, stat_query, text_query, raw_query)
         else:
             cards, group_df = self.db.query_text_in_card_text(inner_result, stat_query, text_query)
 
@@ -509,7 +509,7 @@ class BotManager():
             return MsgPair('simple_txt', '= 기호를 찾을 수 없습니다.')
 
         user_query = text[:sep_idx].strip()
-        stat_query, text_query, err = self.db.parse_user_request(user_query)
+        stat_query, text_query, raw_query, err = self.db.parse_user_request(user_query)
         if stat_query is None:
             ret_text = self._err_code_to_str(err)
             self.send_msg_pair(MsgPair('simple_txt', ret_text))
@@ -519,7 +519,7 @@ class BotManager():
         if len(stat_query.keys()) > 0:
             inner_result = self.db.query_stat(stat_query)
 
-        cards, _ = self.db.query_text(inner_result, stat_query, text_query)
+        cards, _ = self.db.query_text(inner_result, stat_query, text_query, raw_query)
         card_alias = self.db.normalize_text(text[sep_idx + 1:].strip(), cannot_believe=True)
         if len(card_alias) == 0:
             return MsgPair('simple_txt', '별명을 작성해주세요.')
@@ -545,7 +545,7 @@ class BotManager():
         user_query = text
         card = None
         if len(user_query) > 0:
-            stat_query, text_query, err = self.db.parse_user_request(user_query)
+            stat_query, text_query, raw_query,err = self.db.parse_user_request(user_query)
             if stat_query is None:
                 ret_text = self._err_code_to_str(err)
                 self.send_msg_pair(MsgPair('simple_txt', ret_text))
@@ -554,7 +554,7 @@ class BotManager():
             inner_result = None
             if len(stat_query.keys()) > 0:
                 inner_result = self.db.query_stat(stat_query)
-            cards, _ = self.db.query_text(inner_result, stat_query, text_query)
+            cards, _ = self.db.query_text(inner_result, stat_query, text_query, raw_query)
             if cards.shape[0] == 0:
                 return MsgPair('simple_txt', '[%s] 에 해당하는 카드를 찾을 수 없습니다.' % (user_query,))
             elif cards.shape[0] > 1:

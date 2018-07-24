@@ -443,7 +443,7 @@ class DBConnector(object):
 
         return ret
 
-    def query_text(self, query_table, stat_query, text_query):
+    def query_text(self, query_table, stat_query, text_query, raw_query):
         text_query = text_query.strip()
         group_df = {}
         exactly_match = False
@@ -454,6 +454,11 @@ class DBConnector(object):
             if query_table is None:
                 return pd.DataFrame(columns=self.card_db_col), group_df
             query_table = query_table.drop_duplicates(subset='web_id', keep='last')
+            total_name_list = self.mem_db['name']
+            for idx, each_name in enumerate(total_name_list):
+                if raw_query == each_name:
+                    exactly_key = [self.mem_db['key'][idx]]
+                    exactly_match = True
         else:
             if query_table is None:
                 assert(self.card_db is not None)
@@ -475,13 +480,14 @@ class DBConnector(object):
             else:
                 name_list = cur_memdb['name']
             ret_key = []
-            for idx, each_name in enumerate(name_list):
-                if text_query == each_name:
-                    exactly_key = [cur_memdb['key'][idx]]
+            total_name_list = self.mem_db['name']
+            for idx, each_name in enumerate(total_name_list):
+                if raw_query == each_name:
+                    exactly_key = [self.mem_db['key'][idx]]
                     exactly_match = True
-                else:
-                    if text_query in each_name:
-                        ret_key.append(cur_memdb['key'][idx])
+            for idx, each_name in enumerate(name_list):
+                if text_query != each_name and text_query in each_name:
+                    ret_key.append(cur_memdb['key'][idx])
 
             name_list = cur_alias_mem_db['name']
             for idx, each_name in enumerate(name_list):
@@ -617,7 +623,8 @@ class DBConnector(object):
             stat_query = {}
             text_query = self.normalize_text(orig_text, cannot_believe=True)
 
-        return stat_query, text_query, None
+        raw_query = self.normalize_text(orig_text, cannot_believe=True)
+        return stat_query, text_query, raw_query, None
 
     def normalize_text(self, text, cannot_believe=False):
         if cannot_believe:
