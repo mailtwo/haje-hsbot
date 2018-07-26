@@ -396,7 +396,7 @@ class BotManager():
             return MSG_TYPE['invalid']
         if 'user' not in msg_info or msg_info['user'][0] != 'U':
             return MSG_TYPE['invalid']
-        if msg_info['user'] == 'U025M7F5T':
+        if msg_info['user'] == 'U6ABBRKKR': #if 'username' in msg_info and msg_info['user_id'] == 'chi':
             return MSG_TYPE['invalid']
         if msg_info['channel'] != self.filter_channel:
             if msg_info['channel'][:2] == 'DA':
