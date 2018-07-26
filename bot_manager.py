@@ -71,7 +71,7 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '플룹'
+        # user_query = '[[[강]]]'
         # stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
         # print (stat_query, text_query, err_msg)
         # inner_result = None
@@ -395,6 +395,8 @@ class BotManager():
         if msg_info['type'] != 'message':
             return MSG_TYPE['invalid']
         if 'user' not in msg_info or msg_info['user'][0] != 'U':
+            return MSG_TYPE['invalid']
+        if msg_info['user'] == 'U025M7F5T':
             return MSG_TYPE['invalid']
         if msg_info['channel'] != self.filter_channel:
             if msg_info['channel'][:2] == 'DA':
