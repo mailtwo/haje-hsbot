@@ -57,7 +57,7 @@ def crawl_card_data(card_id):
 
     card_info, err = retrieve_card_information(target_page, '', '')
     if err:
-        return card_info. err
+        return card_info, err
     card_info['text'] = card_info['card_text']
     card_eng_name = target_page[target_page.rfind('/')+1:]
     card_info['img_url'] = 'https://www.hearthstudy.com/images/HD_koKR/koKR_%s.png' % (card_eng_name, )
