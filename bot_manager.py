@@ -624,7 +624,7 @@ class BotManager():
                 if err:
                     self.send_message(card_info, user_id)
                 else:
-                    self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path)
+                    self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path, postprocess=False)
                     self.send_message('성공적으로 등록되었습니다.', user_id)
             else:
                 card_json = ' '.join(arg_list[1:])

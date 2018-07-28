@@ -681,25 +681,53 @@ class DBConnector(object):
         alias_path = os.path.join('database', 'alias.pd')
         self.alias_db.to_hdf(alias_path, 'df', mode='w', format='table', data_columns=True)
 
-    def add_card_to_db(self, card_info, id_prefix=None, update_pd_path=None):
+    def add_card_to_db(self, card_info, id_prefix=None, update_pd_path=None, postprocess=True):
         if id_prefix is None:
             id_prefix = self.new_expansion_id
 
-        new_card_info = self.default_card_data.copy()
-        new_card_info.update(card_info)
-        if 'web_id' not in card_info:
-            new_card_info['web_id'] = id_prefix+ '_' + str(self.new_card_count)
-        new_card_info['name'] = self.normalize_text(new_card_info['orig_name'], cannot_believe=True)
-        new_card_info['eng_name'] = self.normalize_text(new_card_info['eng_name'], cannot_believe=True)
-        new_card_info['card_text'] = new_card_info['card_text']
-        new_card_info['cost'] = int(new_card_info['cost'])
-        new_card_info['attack'] = int(new_card_info['attack'])
-        new_card_info['health'] = int(new_card_info['health'])
-        if 'mechanics' in new_card_info:
-            for v in new_card_info['mechanics']:
-                new_card_info[v] = True
+        if postprocess:
+            new_card_info = self.default_card_data.copy()
+            new_card_info.update(card_info)
+            if 'web_id' not in card_info:
+                new_card_info['web_id'] = id_prefix+ '_' + str(self.new_card_count)
+            new_card_info['name'] = self.normalize_text(new_card_info['orig_name'], cannot_believe=True)
+            new_card_info['eng_name'] = self.normalize_text(new_card_info['eng_name'], cannot_believe=True)
+            new_card_info['card_text'] = new_card_info['card_text']
+            new_card_info['cost'] = int(new_card_info['cost'])
+            new_card_info['attack'] = int(new_card_info['attack'])
+            new_card_info['health'] = int(new_card_info['health'])
+            if 'mechanics' in new_card_info:
+                for v in new_card_info['mechanics']:
+                    new_card_info[v] = True
+        else:
+            new_card_info = card_info
         card_info = new_card_info
-        self.card_db = self.card_db.append([pd.DataFrame([card_info], columns=self.card_db.columns)], ignore_index=True)
+
+        res = self.card_db.query('eng_name == \"%s\"' % (card_info['eng_name']))
+        if len(res) == 0:
+            if 'mechanics' in card_info:
+                for keywords in hs_keywords.values():
+                    if keywords in card_info['mechanics']:
+                        card_info[keywords] = True
+                    else:
+                        card_info[keywords] = False
+                del card_info['mechanics']
+            card_info['web_id'] = id_prefix+ '_' + str(self.new_card_count)
+            self.card_db = self.card_db.append([pd.DataFrame([card_info])], ignore_index=True)
+        else:
+            print(res.iloc[0]['web_id'])
+            target_idx = res.iloc[0].name
+            col = self.card_db.columns
+            for keywords in hs_keywords.values():
+                self.card_db.at[target_idx, keywords] = False
+            for k, v in card_info.items():
+                if k != 'mechanics' and k in col:
+                    self.card_db.at[target_idx, k] = v
+                elif k == 'mechanics':
+                    for keywords in v:
+                        if keywords in col:
+                            self.card_db.at[target_idx, keywords] = True
+
         self.card_db.drop_duplicates(subset='web_id', keep='last', inplace=True)
         self.mem_db = self._construct_mem_db(self.card_db)
         self.new_card_count += 1
@@ -707,7 +735,22 @@ class DBConnector(object):
         if update_pd_path is not None:
             if os.path.exists(update_pd_path):
                 new_pd = pd.read_hdf(update_pd_path)
-                new_pd = new_pd.append([pd.DataFrame([card_info], columns=self.card_db.columns)], ignore_index=True)
+                res = new_pd.query('eng_name == \"%s\"'% (card_info['eng_name']))
+                if len(res) == 0:
+                    new_pd = new_pd.append([pd.DataFrame([card_info])], ignore_index=True)
+                else:
+                    print(res.iloc[0]['web_id'])
+                    target_idx = res.iloc[0].name
+                    col = new_pd.columns
+                    for keywords in hs_keywords.values():
+                        new_pd.at[target_idx, keywords] = False
+                    for k, v in card_info.items():
+                        if k != 'mechanics' and k in col:
+                            new_pd.at[target_idx, k] = v
+                        elif k == 'mechanics':
+                            for keywords in v:
+                                if keywords in col:
+                                    new_pd.at[target_idx, keywords] = True
             else:
                 new_pd = pd.DataFrame([card_info], columns=self.card_db.columns)
             new_pd.drop_duplicates(subset='web_id', keep='last', inplace=True)

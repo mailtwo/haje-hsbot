@@ -94,21 +94,28 @@ def crawl_card_data(card_id):
     return index_data, False
 
 def append_card(update_pd_path, card_info):
-    new_pd = pd.read_hdf(update_pd_path)
+    if os.path.exists(update_pd_path):
+        new_pd = pd.read_hdf(update_pd_path)
+    else:
+        new_pd = pd.DataFrame([], columns=pd.read_hdf(os.path.join('database', 'card_info.pd')).columns)
     ids = new_pd['web_id']
     max_val = -1
-    exp = ids[0][:ids[0].find('_')]
-    for idx, c in enumerate(ids):
-        cur_val = int(c[c.find('_')+1:])
-        if cur_val > max_val:
-            max_val = cur_val
-    new_card_count = max_val + 1
-    # for idx, items in new_pd.iterrows():
-    #     for k in translate_table['keywords'].keys():
-    #         if items[k] < 0.01:
-    #             new_pd.at[idx, k] = False
-    #         else:
-    #             new_pd.at[idx, k] = True
+    if len(ids) > 0:
+        exp = ids[0][:ids[0].find('_')]
+        for idx, c in enumerate(ids):
+            cur_val = int(c[c.find('_')+1:])
+            if cur_val > max_val:
+                max_val = cur_val
+        new_card_count = max_val + 1
+    else:
+        exp = 'BOOM'
+        new_card_count=0
+    for idx, items in new_pd.iterrows():
+        for k in translate_table['keywords'].keys():
+            if items[k] < 0.01:
+                new_pd.at[idx, k] = False
+            else:
+                new_pd.at[idx, k] = True
     h_key = list(translate_table['keywords'].keys())
     new_pd[h_key] = new_pd[h_key].astype(bool)
     res = new_pd.query('orig_name == \"%s\"'% (card_info['orig_name']))
@@ -121,14 +128,17 @@ def append_card(update_pd_path, card_info):
                     card_info[keywords] = False
             del card_info['mechanics']
         card_info['web_id'] = exp + '_' + str(new_card_count)
-        new_pd = new_pd.append([pd.DataFrame([card_info])], ignore_index=True)
+        if new_card_count == 0:
+            new_pd = pd.DataFrame([card_info], columns=pd.read_hdf(os.path.join('database', 'card_info.pd')).columns)
+        else:
+            new_pd = new_pd.append([pd.DataFrame([card_info])], ignore_index=True)
     else:
         print(res.iloc[0]['web_id'])
         target_idx = res.iloc[0].name
         col = new_pd.columns
+        for keywords in h_key:
+            new_pd.at[target_idx, keywords] = False
         for k, v in card_info.items():
-            for keywords in h_key:
-                new_pd.at[target_idx, keywords] = False
             if k != 'mechanics' and k in col:
                 new_pd.at[target_idx, k] = v
             elif k == 'mechanics':
@@ -138,6 +148,7 @@ def append_card(update_pd_path, card_info):
     new_pd.drop_duplicates(subset='web_id', keep='last', inplace=True)
     new_pd.to_hdf(update_pd_path, 'df', mode='w', format='table', data_columns=True)
 
-new_pd = pd.read_hdf(os.path.join('database', 'new_cards.pd'))
-crawl_total_page(target_total_page)
-#crawl_page('omega-medic')
+if __name__ == '__main__':
+    #new_pd = pd.read_hdf(os.path.join('database', 'new_cards.pd'))
+    crawl_total_page(target_total_page)
+    #crawl_page('omega-medic')
