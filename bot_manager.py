@@ -634,8 +634,8 @@ class BotManager():
                 except json.JSONDecodeError as e:
                     self.send_message('카드 정보를 JSON으로 변환할 수 없습니다.', user_id)
                     return None
-            self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path)
-            self.send_message('성공적으로 등록되었습니다.', user_id)
+                self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path)
+                self.send_message('성공적으로 등록되었습니다.', user_id)
         return None
 
     def process_view_card(self, user_id):

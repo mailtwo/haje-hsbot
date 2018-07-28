@@ -150,5 +150,5 @@ def append_card(update_pd_path, card_info):
 
 if __name__ == '__main__':
     #new_pd = pd.read_hdf(os.path.join('database', 'new_cards.pd'))
-    crawl_total_page(target_total_page)
-    #crawl_page('omega-medic')
+    # crawl_total_page(target_total_page)
+    crawl_page('power-word-replicate')
