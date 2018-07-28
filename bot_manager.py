@@ -620,6 +620,7 @@ class BotManager():
             self.send_message('카드 정보를 입력해주세요.\n' + table_col, user_id)
         else:
             if arg_list[1] == '하스스터디':
+                # self.send_message(str(arg_list), user_id)
                 card_info, err = crawl_card_data(arg_list[2])
                 if err:
                     self.send_message(card_info, user_id)
