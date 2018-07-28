@@ -385,7 +385,7 @@ def retrieve_card_information(target_url, card_id, card_name):
     url_file.close()
     inner_souop = None
     try:
-        inner_soup = BeautifulSoup(inner_html, 'html5lib')
+        inner_soup = BeautifulSoup(inner_html, 'lxml')
     except:
         return ('BeautifulSoup에서 해석할 수 없습니다.'), True
     card_info['img_url'] = 'None'
