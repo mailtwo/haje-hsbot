@@ -72,7 +72,13 @@ class BotManager():
         if os.path.exists(self.file_db_path):
             self.file_db = pd.read_hdf(self.file_db_path)
 
-        # user_query = '[[[강]]]'
+        # card_info, err = crawl_card_data('power-word-replicate')
+        # if err:
+        #     print(card_info)
+        # else:
+        #     self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path, postprocess=False)
+        #     #self.send_message('성공적으로 등록되었습니다.', user_id)
+        # user_query = '권능 복제'
         # stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
         # print (stat_query, text_query, err_msg)
         # inner_result = None

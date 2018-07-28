@@ -149,6 +149,6 @@ def append_card(update_pd_path, card_info):
     new_pd.to_hdf(update_pd_path, 'df', mode='w', format='table', data_columns=True)
 
 if __name__ == '__main__':
-    #new_pd = pd.read_hdf(os.path.join('database', 'new_cards.pd'))
+    new_pd = pd.read_hdf(os.path.join('database', 'new_cards.pd'))
     # crawl_total_page(target_total_page)
     crawl_page('power-word-replicate')

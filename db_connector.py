@@ -283,7 +283,7 @@ class DBConnector(object):
                     if cur_val > max_val:
                         max_val = cur_val
                 self.new_card_count = max_val + 1
-                self.card_db = pd.concat([self.card_db, self.new_card_db])
+                self.card_db = pd.concat([self.card_db, self.new_card_db], ignore_index=True)
             else:
                 os.remove(new_card_db)
 
