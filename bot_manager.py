@@ -10,6 +10,7 @@ import datetime
 from slackclient import SlackClient
 from db_connector import DBConnector
 from db_connector import hs_expansion_priority
+from crawl_hsstudy_page import crawl_card_data
 
 
 MSG_TYPE = {
@@ -618,13 +619,21 @@ class BotManager():
             table_col = '{ ' + table_col + ' }'
             self.send_message('카드 정보를 입력해주세요.\n' + table_col, user_id)
         else:
-            card_json = ' '.join(arg_list[1:])
-            card_info = None
-            try:
-                card_info = json.loads(card_json)
-            except json.JSONDecodeError as e:
-                self.send_message('카드 정보를 JSON으로 변환할 수 없습니다.', user_id)
-                return None
+            if arg_list[1] == '하스스터디':
+                card_info, err = crawl_card_data(arg_list[2])
+                if err:
+                    self.send_message(card_info, user_id)
+                else:
+                    self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path)
+                    self.send_message('성공적으로 등록되었습니다.', user_id)
+            else:
+                card_json = ' '.join(arg_list[1:])
+                card_info = None
+                try:
+                    card_info = json.loads(card_json)
+                except json.JSONDecodeError as e:
+                    self.send_message('카드 정보를 JSON으로 변환할 수 없습니다.', user_id)
+                    return None
             self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path)
             self.send_message('성공적으로 등록되었습니다.', user_id)
         return None

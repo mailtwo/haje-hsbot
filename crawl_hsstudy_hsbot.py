@@ -371,11 +371,14 @@ def retrieve_card_information(target_url, card_id, card_name):
     }
     is_err = False
 
+    count = 0
     while(True):
         try:
             url_file = urllib.request.urlopen(target_url)
             break
         except:
+            if count == 3:
+                return ('URL을 열 수 없습니다 - %s' % target_url), True
             time.sleep(5)
 
     inner_html = url_file.read().decode('utf8')
@@ -387,6 +390,14 @@ def retrieve_card_information(target_url, card_id, card_name):
         if elem.text != 'Related Contents':
             card_info['eng_name'] = elem.text
 
+    title_div = inner_soup.find('section', {'class': 'bg-white'})
+    title_div = title_div.find('div', {'class': 'title'})
+    name = title_div.find('h2').text
+    eng_name = title_div.find('p').text
+    card_info['name'] = name
+    card_info['eng_name'] = eng_name
+
+
     detail_table = inner_soup.find('div', {'class': 'panel panel-default'})
     card_info['hero'] = detail_table.find('div', {'class': 'panel-heading'}).find('a').text
     info_list = detail_table.find_all('div', {'class': 'panel-body'})
@@ -396,7 +407,7 @@ def retrieve_card_information(target_url, card_id, card_name):
             href_url = ahref.attrs['href']
             value = ahref.text
             if 'rarity' in href_url:
-                card_info['rarity'] = translate_table['rarity'][value]
+                card_info['rarity'] = value
             elif 'type' in href_url:
                 card_info['type'] = value
             elif 'race' in href_url:
@@ -424,10 +435,9 @@ def retrieve_card_information(target_url, card_id, card_name):
     bs_callout = detail_table.parent.find('div', {'class':'bs-callout'})
     if bs_callout is not None:
         card_text_elem = bs_callout.find('p')
-        card_info['card_text'] = card_text_elem.text
+        card_info['card_text'] = str(card_text_elem)
 
     return card_info, is_err
-
 
 def download_img(target_url, save_path):
     is_err = False
