@@ -383,59 +383,75 @@ def retrieve_card_information(target_url, card_id, card_name):
 
     inner_html = url_file.read().decode('utf8')
     url_file.close()
-    inner_soup = BeautifulSoup(inner_html, 'html5lib')
+    inner_souop = None
+    try:
+        inner_soup = BeautifulSoup(inner_html, 'html5lib')
+    except:
+        return ('BeautifulSoup에서 해석할 수 없습니다.'), True
     card_info['img_url'] = 'None'
 
-    for elem in inner_soup.find_all('p', {'class': 'description'}):
-        if elem.text != 'Related Contents':
-            card_info['eng_name'] = elem.text
+    try:
+        for elem in inner_soup.find_all('p', {'class': 'description'}):
+            if elem.text != 'Related Contents':
+                card_info['eng_name'] = elem.text
+    except:
+        return ('description class를 찾을 수 없습니다.'), True
 
-    title_div = inner_soup.find('section', {'class': 'bg-white'})
-    title_div = title_div.find('div', {'class': 'title'})
-    name = title_div.find('h2').text
-    eng_name = title_div.find('p').text
+    try:
+        title_div = inner_soup.find('section', {'class': 'bg-white'})
+        title_div = title_div.find('div', {'class': 'title'})
+        name = title_div.find('h2').text
+        eng_name = title_div.find('p').text
+    except:
+        return ('name, eng_name을 찾을 수 없습니다.', True)
     card_info['name'] = name
     card_info['eng_name'] = eng_name
 
 
-    detail_table = inner_soup.find('div', {'class': 'panel panel-default'})
-    card_info['hero'] = detail_table.find('div', {'class': 'panel-heading'}).find('a').text
-    info_list = detail_table.find_all('div', {'class': 'panel-body'})
-    for info_data in info_list:
-        if info_data.find('a') is not None:
-            ahref = info_data.find('a')
-            href_url = ahref.attrs['href']
-            value = ahref.text
-            if 'rarity' in href_url:
-                card_info['rarity'] = value
-            elif 'type' in href_url:
-                card_info['type'] = value
-            elif 'race' in href_url:
-                card_info['race'] = value
-            elif 'category' in href_url:
-                card_info['expansion'] = value
-        else:
-            img_list = info_data.find_all('img')
-            stat_list = info_data.find_all('h3')
-            stat_idx = 0
-            for img in img_list:
-                stat = stat_list[stat_idx]
-                while len(stat.text) == 0:
-                    stat_idx += 1
+    try:
+        detail_table = inner_soup.find('div', {'class': 'panel panel-default'})
+        card_info['hero'] = detail_table.find('div', {'class': 'panel-heading'}).find('a').text
+        info_list = detail_table.find_all('div', {'class': 'panel-body'})
+        for info_data in info_list:
+            if info_data.find('a') is not None:
+                ahref = info_data.find('a')
+                href_url = ahref.attrs['href']
+                value = ahref.text
+                if 'rarity' in href_url:
+                    card_info['rarity'] = value
+                elif 'type' in href_url:
+                    card_info['type'] = value
+                elif 'race' in href_url:
+                    card_info['race'] = value
+                elif 'category' in href_url:
+                    card_info['expansion'] = value
+            else:
+                img_list = info_data.find_all('img')
+                stat_list = info_data.find_all('h3')
+                stat_idx = 0
+                for img in img_list:
                     stat = stat_list[stat_idx]
-                img_src = img.attrs['src']
-                if 'mana' in img_src:
-                    card_info['cost'] = int(stat.text)
-                elif 'attack' in img_src or 'WEAPON' in img_src:
-                    card_info['attack'] = int(stat.text)
-                elif 'MINION' in img_src or 'health_weapon' in img_src:
-                    card_info['health'] = int(stat.text)
-                stat_idx += 1
+                    while len(stat.text) == 0:
+                        stat_idx += 1
+                        stat = stat_list[stat_idx]
+                    img_src = img.attrs['src']
+                    if 'mana' in img_src:
+                        card_info['cost'] = int(stat.text)
+                    elif 'attack' in img_src or 'WEAPON' in img_src:
+                        card_info['attack'] = int(stat.text)
+                    elif 'MINION' in img_src or 'health_weapon' in img_src:
+                        card_info['health'] = int(stat.text)
+                    stat_idx += 1
+    except:
+        return ('카드 속성을 찾을 수 없습니다.', True)
 
-    bs_callout = detail_table.parent.find('div', {'class':'bs-callout'})
-    if bs_callout is not None:
-        card_text_elem = bs_callout.find('p')
-        card_info['card_text'] = str(card_text_elem)
+    try:
+        bs_callout = detail_table.parent.find('div', {'class':'bs-callout'})
+        if bs_callout is not None:
+            card_text_elem = bs_callout.find('p')
+            card_info['card_text'] = str(card_text_elem)
+    except:
+        return '카드 효과를 찾을 수 없습니다.', True
 
     return card_info, is_err
 
