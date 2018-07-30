@@ -212,7 +212,7 @@ def start_crawling(db_data, db_root):
             if card_info['text'][:3] == '[x]':
                 card_info['text'] = card_info['text'][3:]
             card_info['text'] = card_info['text'].replace('\n', ' ').replace('$', '').replace('#', '').replace('<b>', '*').replace('</b> ', '* ').replace('</b>', '* ') \
-                .replace('<i>', '_').replace('</i> ', '_ ').replace('</i>', '_ ')
+                .replace('<i>', '_').replace('</i> ', '_ ').replace('</i>', '_ ').replace('<br/>', ' ')
         else:
             card_info['text'] = ''
         if '_BOSS_' in card_info['id']:
