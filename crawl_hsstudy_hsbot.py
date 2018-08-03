@@ -58,6 +58,8 @@ translate_table = {
         'ICCA': '얼어붙은 왕좌 모험모드',
         'LOOTAPALOOZA': '코볼트',
         'LOOTA': '코볼트 모험모드',
+        'BOOMSDAY': '폭심만만',
+        'BOTA': '폭심만만 모험모드',
         'GILNEAS': '마녀숲',
         'GILA': '마녀숲 모험모드',
         'TAVERNS_OF_TIME': '시간의 선술집',
@@ -69,6 +71,7 @@ translate_table = {
         'ICCA': 'ICCA',
         'LOOTA': 'LOOTA',
         'GILA': 'GILA',
+        'BOTA': 'BOTA',
     },
     'race': {
         'MURLOC': '멀록',
