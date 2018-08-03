@@ -46,6 +46,9 @@ def crawl_total_page(page_url):
 
 def crawl_page(card_id):
     index_data, err = crawl_card_data(card_id)
+    if err:
+        print (index_data)
+        return
     # print('하스봇! 카드추가 ' + json.dumps(index_data, ensure_ascii=False))
     append_card(os.path.join('database', 'new_cards.pd'),
                 index_data)
@@ -118,7 +121,8 @@ def append_card(update_pd_path, card_info):
                 new_pd.at[idx, k] = True
     h_key = list(translate_table['keywords'].keys())
     new_pd[h_key] = new_pd[h_key].astype(bool)
-    res = new_pd.query('orig_name == \"%s\"'% (card_info['orig_name']))
+
+    res = new_pd.query('eng_name == \"%s\"'% (card_info['eng_name']))
     if len(res) == 0:
         if 'mechanics' in card_info:
             for keywords in h_key:
@@ -149,6 +153,6 @@ def append_card(update_pd_path, card_info):
     new_pd.to_hdf(update_pd_path, 'df', mode='w', format='table', data_columns=True)
 
 if __name__ == '__main__':
-    new_pd = pd.read_hdf(os.path.join('database', 'new_cards.pd'))
-    # crawl_total_page(target_total_page)
-    crawl_page('power-word-replicate')
+    # new_pd = pd.read_hdf(os.path.join('database', 'new_cards.pd'))
+    crawl_total_page(target_total_page)
+    # crawl_page('power-word-replicate')
