@@ -476,11 +476,12 @@ class DBConnector(object):
                     check_eng = False
                     break
             if check_eng:
+                total_name_list = self.mem_db['eng_name']
                 name_list = cur_memdb['eng_name']
             else:
+                total_name_list = self.mem_db['name']
                 name_list = cur_memdb['name']
             ret_key = []
-            total_name_list = self.mem_db['name']
             for idx, each_name in enumerate(total_name_list):
                 if raw_query == each_name:
                     exactly_key = [self.mem_db['key'][idx]]
