@@ -52,7 +52,7 @@ class BotManager():
     def __init__(self, mode):
         self.mode = mode
         self.db = DBConnector(mode)
-        self.new_cards_path = new_cards_path = os.path.join('database', 'new_cards.pd')
+        self.new_cards_path = new_cards_path = ''#os.path.join('database', 'new_cards.pd')
         if not os.path.exists(new_cards_path):
             new_cards_path = None
         self.db.load([os.path.join('database', 'card_info.pd')],
