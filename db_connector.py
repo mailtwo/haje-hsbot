@@ -454,7 +454,16 @@ class DBConnector(object):
             if query_table is None:
                 return pd.DataFrame(columns=self.card_db_col), group_df
             query_table = query_table.drop_duplicates(subset='web_id', keep='last')
-            total_name_list = self.mem_db['name']
+            check_eng = True
+            for w in text_query:
+                if ord(w) > 255:
+                    check_eng = False
+                    break
+            if check_eng:
+                total_name_list = self.mem_db['eng_name']
+            else:
+                total_name_list = self.mem_db['name']
+
             for idx, each_name in enumerate(total_name_list):
                 if raw_query == each_name:
                     exactly_key = [self.mem_db['key'][idx]]
