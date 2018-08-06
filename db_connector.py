@@ -53,6 +53,7 @@ hs_keywords = {
     '개전': 'START_OF_GAME',
     '예비 부품': 'SPARE_PART',
     '광풍': 'MEGA_WINDFURY',
+    '합체': 'MODULAR'
 }
 
 class DBConnector(object):

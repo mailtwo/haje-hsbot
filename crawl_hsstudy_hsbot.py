@@ -122,6 +122,7 @@ translate_table = {
         'START_OF_GAME': '개전',
         'SPARE_PART': '예비 부품',
         'MEGA_WINDFURY': '광풍',
+        'MODULAR': '합체'
     }
 }
 keyword_keys = list(translate_table['keywords'].keys())
