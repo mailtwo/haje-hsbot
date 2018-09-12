@@ -70,7 +70,10 @@ class BotManager():
         self.file_db_path = os.path.join('database', 'file_db.pd')
         self.file_db = pd.DataFrame([[pd.to_datetime('now'), 'None']], columns=file_db_col)
         if os.path.exists(self.file_db_path):
-            self.file_db = pd.read_hdf(self.file_db_path)
+            try:
+                self.file_db = pd.read_hdf(self.file_db_path)
+            except:
+                os.remove(self.file_db_path)
 
         # card_info, err = crawl_card_data('power-word-replicate')
         # if err:
@@ -78,7 +81,7 @@ class BotManager():
         # else:
         #     self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path, postprocess=False)
         #     #self.send_message('성공적으로 등록되었습니다.', user_id)
-        # user_query = '권능 복제'
+        # user_query = 'Sap'
         # stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
         # print (stat_query, text_query, err_msg)
         # inner_result = None
@@ -304,32 +307,59 @@ class BotManager():
         return True
 
     def file_db_remover_thread(self, data_info):
+        sleep_delay = 3600 * 2
+        file_remove_delay = 3600 * 24 * 1
+        sleep_time = sleep_delay
         while True:
-            remove_target = []
-            for itr, row in self.file_db.iterrows():
-                file_date = row['date']
-                file_id = row['file_id']
-                if file_id == 'None':
-                    continue
-                now_time = pd.to_datetime('now')
-                diff = now_time - file_date
-                if diff.total_seconds() >= 3600 * 24 * 1:
-                    remove_target.append(row.name)
+            try:
+                try:
+                    remove_target = []
+                    for itr, row in self.file_db.iterrows():
+                        file_date = row['date']
+                        file_id = row['file_id']
+                        if file_id == 'None':
+                            continue
+                        now_time = pd.to_datetime('now')
+                        diff = now_time - file_date
+                        if diff.total_seconds() >= file_remove_delay:
+                            remove_target.append(row.name)
 
-            for file_id in remove_target:
-                result = self.sc.api_call(
-                    'files.delete',
-                    file=self.file_db.loc[file_id]['file_id']
-                )
+                    for file_id in remove_target:
+                        result = self.sc.api_call(
+                            'files.delete',
+                            file=self.file_db.loc[file_id]['file_id']
+                        )
 
-                self.file_db.drop([file_id], inplace=True)
-            self.file_db.reset_index(drop=True, inplace=True)
-            self.file_db.to_hdf(self.file_db_path, 'df', mode='w', format='table', data_columns=True)
+                        self.file_db.drop([file_id], inplace=True)
+                    self.file_db.reset_index(drop=True, inplace=True)
+                    self.file_db.to_hdf(self.file_db_path, 'df', mode='w', format='table', data_columns=True)
+                except Exception as e:
+                    # try to remove previous file database
+                    if os.path.exists(self.file_db_path):
+                        os.remove(self.file_db_path)
+                    self.file_db = pd.DataFrame([[pd.to_datetime('now'), 'None']], columns=file_db_col)
+                    self.file_db.to_hdf(self.file_db_path, 'df', mode='w', format='table', data_columns=True)
+                    sleep_time = 0
+            except Exception as e:
+                ret_text = []
+                ret_text.append('오류 발생')
+                ret_text.append(str(sys.exc_info()[0]))
+                ret_text = '\n'.join(ret_text)
+                with open('error.log', 'a+', encoding='utf-8') as f:
+                    f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
+                    f.write(ret_text)
+                    f.write(traceback.format_exc())
+                    f.flush()
+                msg_pair = MsgPair('simple_txt', ret_text)
+                self.send_msg_pair(msg_pair)
+                if self.mode == 'debug':
+                    raise e
 
-            for i in range(3600 * 2):
+            for i in range(int(sleep_time / 2)):
                 if data_info['stop']:
                     return
-                time.sleep(1)
+                time.sleep(2)
+            sleep_time = sleep_delay
 
     def run(self):
         data_info = {'stop': False}

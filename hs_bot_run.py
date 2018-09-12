@@ -64,7 +64,7 @@ def main():
     try:
         ret_code = run_program(mode)
         print('Return code: %d. Terminate program...' % (ret_code, ))
-    except:
+    except Exception as e:
         if mode == 'debug':
             raise e
         else:
