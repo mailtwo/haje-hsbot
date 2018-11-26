@@ -298,7 +298,7 @@ class BotManager():
         assert self.slack_token is not None
         self.sc = SlackClient(self.slack_token)
 
-        if not self.sc.rtm_connect():
+        if not self.sc.rtm_connect(with_team_state=False, auto_reconnect=True):
             print('Error while sc.rtm_connect()')
             return False
 
