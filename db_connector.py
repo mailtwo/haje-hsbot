@@ -128,7 +128,7 @@ class DBConnector(object):
                               '선택:': '선택 -'}
         self.card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
         self.card_db_col += list(hs_keywords.values())
-        self.new_expansion_name = '대난투'
+        self.new_expansion_name = None
         self.new_expansion_id = 'RUMBLE'
         self.new_expansion_img = 'https://d2q63o9r0h0ohi.cloudfront.net/images/rastakhans-rumble/ko-kr/logo@2x-420e48814a9a649990a0c19d9b3baa1b6b33daaa567d28228987ac6034fa4db7585f5c8cc0c5be7adc79d56e5ab15df92965f4608a5b7c2d91387b5b0fe4d6a5.png'
         self.new_card_count = 0
