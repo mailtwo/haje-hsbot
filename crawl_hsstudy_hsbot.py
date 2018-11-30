@@ -62,7 +62,8 @@ translate_table = {
         'BOTA': '폭심만만 모험모드',
         'GILNEAS': '마녀숲',
         'GILA': '마녀숲 모험모드',
-        'TAVERNS_OF_TIME': '시간의 선술집'
+        'TAVERNS_OF_TIME': '시간의 선술집',
+        'TROLL': '라스타칸의 대난투'
     },
     'adventure': {
         'NAX': 'NAXA',
@@ -122,7 +123,8 @@ translate_table = {
         'START_OF_GAME': '개전',
         'SPARE_PART': '예비 부품',
         'MEGA_WINDFURY': '광풍',
-        'MODULAR': '합체'
+        'MODULAR': '합체',
+        'OVERKILL': '압살'
     }
 }
 keyword_keys = list(translate_table['keywords'].keys())
@@ -311,6 +313,8 @@ def start_crawling(db_data, db_root):
                     index_data[v] = True
             if '*광풍*' in card_info['text']:
                 index_data['MEGA_WINDFURY'] = True
+            if '압살:' in card_info['text']:
+                index_data['OVERKILL'] = True
             # if index_key in db_data[card_info['hero']]['index']:
             #     db_data[card_info['hero']]['index'][index_key].append(index_data)
             # else:
