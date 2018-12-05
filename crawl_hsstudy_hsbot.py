@@ -63,7 +63,8 @@ translate_table = {
         'GILNEAS': '마녀숲',
         'GILA': '마녀숲 모험모드',
         'TAVERNS_OF_TIME': '시간의 선술집',
-        'TROLL': '라스타칸의 대난투'
+        'TROLL': '라스타칸의 대난투',
+        'TRLA': '라스타칸의 대난투 모험모드'
     },
     'adventure': {
         'NAX': 'NAXA',
@@ -73,6 +74,7 @@ translate_table = {
         'LOOTA': 'LOOTA',
         'GILA': 'GILA',
         'BOTA': 'BOTA',
+        'TRLA': 'TRLA'
     },
     'race': {
         'MURLOC': '멀록',
