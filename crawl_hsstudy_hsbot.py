@@ -313,8 +313,6 @@ def start_crawling(db_data, db_root):
                     index_data[v] = True
             if '*광풍*' in card_info['text']:
                 index_data['MEGA_WINDFURY'] = True
-            if '압살:' in card_info['text']:
-                index_data['OVERKILL'] = True
             # if index_key in db_data[card_info['hero']]['index']:
             #     db_data[card_info['hero']]['index'][index_key].append(index_data)
             # else:
