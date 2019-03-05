@@ -62,8 +62,6 @@ class DBConnector(object):
         self.mode = mode
         self.card_db = None
         self.alias_db = None
-        self.standard_filter = ['코볼트', '얼어붙은 왕좌', '운고로', '마녀숲', '라스타칸의 대난투','오리지널', '기본']
-        self.wild_filter = ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹', '가젯잔', '카라잔', '고대 신']
         self.hero_alias = {
                             '드루이드': '드루이드',
                             '드루': '드루이드',
@@ -82,30 +80,16 @@ class DBConnector(object):
                             '흑마': '흑마법사',
                             '전사': '전사',
                             '중립': '중립'}
-        self.expansion_alias = {'코볼트': '코볼트',
-                                '얼어붙은 왕좌': '얼어붙은 왕좌',
-                                '얼왕': '얼어붙은 왕좌',
+        self.expansion_alias = {'얼왕': '얼어붙은 왕좌',
                                 '얼왕기': '얼어붙은 왕좌',
-                                '운고로': '운고로',
-                                '가젯잔': '가젯잔',
-                                '카라잔': '카라잔',
-                                '오리지널': '오리지널',
-                                '대 마상시합': '대 마상시합',
                                 '대마상': '대 마상시합',
-                                '낙스라마스': '낙스라마스',
                                 '낙스': '낙스라마스',
-                                '고블린 대 노움': '고블린 대 노움',
                                 '고대놈': '고블린 대 노움',
                                 '고놈': '고블린 대 노움',
-                                '검은바위 산': '검은바위 산',
                                 '검바산': '검은바위 산',
-                                '탐험가 연맹': '탐험가 연맹',
                                 '탐연': '탐험가 연맹',
-                                '마녀숲': '마녀숲',
-                                '시간의 선술집': '시간의 선술집',
                                 '대난투 모험모드': '라스타칸의 대난투 모험모드',
                                 '라스타칸 모험모드': '라스타칸의 대난투 모험모드',
-                                '라스타칸의 대난투': '라스타칸의 대난투',
                                 '대난투': '라스타칸의 대난투',
                                 '라스타칸': '라스타칸의 대난투'}
         self.type_alias = {'주문': '주문',
@@ -136,8 +120,11 @@ class DBConnector(object):
         self.new_card_count = 0
         self.new_card_db = None
 
+        for group in hs_expansion_group:
+            for expansion_id in hs_expansion_group[group]:
+                self.expansion_alias[expansion_id] = expansion_id
+
         if self.new_expansion_name is not None:
-            self.standard_filter.append(self.new_expansion_name)
             self.expansion_alias[self.new_expansion_name] = self.new_expansion_name
             hs_expansion_group['정규'].append(self.new_expansion_name)
 
@@ -248,6 +235,8 @@ class DBConnector(object):
         self.default_card_data = default_card_data
 
     def _compare_word_list_gen(self, cond_list):
+        cond_list.sort(key=len, reverse=True)
+
         def _inner_fun(word):
             for cond in cond_list:
                 if len(word) < len(cond):
