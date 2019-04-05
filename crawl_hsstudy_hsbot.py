@@ -64,7 +64,8 @@ translate_table = {
         'GILA': '마녀숲 모험모드',
         'TAVERNS_OF_TIME': '시간의 선술집',
         'TROLL': '라스타칸의 대난투',
-        'TRLA': '라스타칸의 대난투 모험모드'
+        'TRLA': '라스타칸의 대난투 모험모드',
+        'DALARAN': '어둠의 반격'
     },
     'adventure': {
         'NAX': 'NAXA',
@@ -126,7 +127,8 @@ translate_table = {
         'SPARE_PART': '예비 부품',
         'MEGA_WINDFURY': '광풍',
         'MODULAR': '합체',
-        'OVERKILL': '압살'
+        'OVERKILL': '압살',
+        'TWINSPELL': '이중 주문'
     }
 }
 keyword_keys = list(translate_table['keywords'].keys())
@@ -283,6 +285,9 @@ def start_crawling(db_data, db_root):
             #card_info, err = retrieve_card_information(detail_url, card_id, card_name)
             card_info = card_data[card_id]
 
+            # if 'set' not in card_info:
+            #     print(card_info['name'])
+            #     card_info['set'] = 'HOF'
             # index_key = str([card_info['cost'], card_info['attack'], card_info['health']])
             index_data = {  'web_id': card_info['id'],
                             'orig_name': card_info['name'],

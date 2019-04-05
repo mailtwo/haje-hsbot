@@ -10,8 +10,8 @@ alias_db_col = ['web_id', 'alias']
 hs_races = ['멀록', '악마', '야수', '용족', '토템', '해적', '기계', '정령', '모두']
 hs_expansion_group = {
     '정확': [],
-    '정규': ['코볼트', '얼어붙은 왕좌', '폭심만만', '운고로', '마녀숲', '라스타칸의 대난투', '오리지널', '기본'],
-    '야생': ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹', '가젯잔', '카라잔', '고대 신'],
+    '정규': ['마녀숲', '폭심만만', '라스타칸의 대난투', '어둠의 반격', '오리지널', '기본'],
+    '야생': ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹', '가젯잔', '카라잔', '고대 신', '운고로', '코볼트', '얼어붙은 왕좌'],
     '모험모드': ['낙스라마스 모험모드', '검은바위 산 모험모드', '탐험가 연맹 모험모드', '카라잔 모험모드', '얼어붙은 왕좌 모험모드', '코볼트 모험모드', '마녀숲 모험모드', '시간의 선술집', '라스타칸의 대난투 모험모드']
 }
 hs_expansion_priority = ['정확', '정규', '야생', '모험모드']
@@ -54,7 +54,8 @@ hs_keywords = {
     '예비 부품': 'SPARE_PART',
     '광풍': 'MEGA_WINDFURY',
     '합체': 'MODULAR',
-    '압살': 'OVERKILL'
+    '압살': 'OVERKILL',
+    '이중 주문': 'TWINSPELL'
 }
 
 class DBConnector(object):
@@ -80,7 +81,8 @@ class DBConnector(object):
                             '흑마': '흑마법사',
                             '전사': '전사',
                             '중립': '중립'}
-        self.expansion_alias = {'얼왕': '얼어붙은 왕좌',
+        self.expansion_alias = {'오리지날': '오리지널',
+                                '얼왕': '얼어붙은 왕좌',
                                 '얼왕기': '얼어붙은 왕좌',
                                 '대마상': '대 마상시합',
                                 '낙스': '낙스라마스',
@@ -91,7 +93,10 @@ class DBConnector(object):
                                 '대난투 모험모드': '라스타칸의 대난투 모험모드',
                                 '라스타칸 모험모드': '라스타칸의 대난투 모험모드',
                                 '대난투': '라스타칸의 대난투',
-                                '라스타칸': '라스타칸의 대난투'}
+                                '라스타칸': '라스타칸의 대난투',
+                                '어둠': '어둠의 반격',
+                                '반격': '어둠의 반격',
+                                '어반': '어둠의 반격'}
         self.type_alias = {'주문': '주문',
                            '하수인': '하수인',
                            '무기': '무기',
@@ -115,8 +120,8 @@ class DBConnector(object):
         self.card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
         self.card_db_col += list(hs_keywords.values())
         self.new_expansion_name = None
-        self.new_expansion_id = 'RUMBLE'
-        self.new_expansion_img = 'https://d2q63o9r0h0ohi.cloudfront.net/images/rastakhans-rumble/ko-kr/logo@2x-420e48814a9a649990a0c19d9b3baa1b6b33daaa567d28228987ac6034fa4db7585f5c8cc0c5be7adc79d56e5ab15df92965f4608a5b7c2d91387b5b0fe4d6a5.png'
+        self.new_expansion_id = None#'RUMBLE'
+        self.new_expansion_img = None#'https://d2q63o9r0h0ohi.cloudfront.net/images/rastakhans-rumble/ko-kr/logo@2x-420e48814a9a649990a0c19d9b3baa1b6b33daaa567d28228987ac6034fa4db7585f5c8cc0c5be7adc79d56e5ab15df92965f4608a5b7c2d91387b5b0fe4d6a5.png'
         self.new_card_count = 0
         self.new_card_db = None
 
@@ -212,7 +217,7 @@ class DBConnector(object):
 
 
         default_card_data = {
-            'web_id': self.new_expansion_id + '_' + str(self.new_card_count),
+            'web_id': '',#self.new_expansion_id + '_' + str(self.new_card_count),
             'orig_name': '없음',
             'name': '없음',
             'eng_name': 'none',
@@ -696,6 +701,8 @@ class DBConnector(object):
             new_card_info.update(card_info)
             if 'web_id' not in card_info:
                 new_card_info['web_id'] = id_prefix+ '_' + str(self.new_card_count)
+            else:
+                new_card_info['web_id'] = self.new_expansion_id + '_' + str(self.new_card_count)
             new_card_info['name'] = self.normalize_text(new_card_info['orig_name'], cannot_believe=True)
             new_card_info['eng_name'] = self.normalize_text(new_card_info['eng_name'], cannot_believe=True)
             new_card_info['card_text'] = new_card_info['card_text']
