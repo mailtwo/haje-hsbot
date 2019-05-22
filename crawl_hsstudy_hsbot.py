@@ -34,7 +34,7 @@ translate_table = {
         'COMMON': '일반',
         'FREE': '일반',
         'RARE': '희귀',
-        'EPIC': '영웅',
+        'EPIC': '특급',
         'LEGENDARY': '전설'
     },
     'extension': {
