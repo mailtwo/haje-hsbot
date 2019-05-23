@@ -34,7 +34,7 @@ translate_table = {
         'COMMON': '일반',
         'FREE': '일반',
         'RARE': '희귀',
-        'EPIC': '영웅',
+        'EPIC': '특급',
         'LEGENDARY': '전설'
     },
     'extension': {
@@ -65,7 +65,8 @@ translate_table = {
         'TAVERNS_OF_TIME': '시간의 선술집',
         'TROLL': '라스타칸의 대난투',
         'TRLA': '라스타칸의 대난투 모험모드',
-        'DALARAN': '어둠의 반격'
+        'DALARAN': '어둠의 반격',
+        'DALA': '어둠의 반격 모험모드'
     },
     'adventure': {
         'NAX': 'NAXA',
@@ -75,7 +76,8 @@ translate_table = {
         'LOOTA': 'LOOTA',
         'GILA': 'GILA',
         'BOTA': 'BOTA',
-        'TRLA': 'TRLA'
+        'TRLA': 'TRLA',
+        'DALA': 'DALA',
     },
     'race': {
         'MURLOC': '멀록',
