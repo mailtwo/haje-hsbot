@@ -345,7 +345,7 @@ class BotManager():
                 ret_text.append('오류 발생')
                 ret_text.append(str(sys.exc_info()[0]))
                 ret_text = '\n'.join(ret_text)
-                with open('error.log', 'a+', encoding='utf-8') as f:
+                with open(os.path.join('database', 'error.log'), 'a+', encoding='utf-8') as f:
                     f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
                     f.write(ret_text)
                     f.write(traceback.format_exc())
@@ -391,7 +391,7 @@ class BotManager():
                 ret_text.append('오류 발생')
                 ret_text.append(str(sys.exc_info()[0]))
                 ret_text = '\n'.join(ret_text)
-                with open('error.log', 'a+') as f:
+                with open(os.path.join('database', 'error.log'), 'a+') as f:
                     f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
                     f.write(ret_text)
                     f.write(traceback.format_exc())
@@ -407,7 +407,7 @@ class BotManager():
                     ret_text.append('오류 발생')
                     ret_text.append(str(sys.exc_info()[0]))
                     ret_text = '\n'.join(ret_text)
-                    with open('error.log', 'a+', encoding='utf-8') as f:
+                    with open(os.path.join('database', 'error.log'), 'a+', encoding='utf-8') as f:
                         f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
                         f.write(ret_text)
                         f.write(traceback.format_exc())

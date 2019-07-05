@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 import datetime
@@ -38,7 +39,7 @@ def run_program(mode):
                     err_count += 1
                 if err_count >= 3:
                     if critical_writen == False:
-                        with open('critical_error.log', 'a+') as f:
+                        with open(os.path.join('database', 'critical_error.log'), 'a+') as f:
                             f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
                             f.write('System emergency stop; too many errors\n')
                             f.write('timediff: %d s' % (cur_time - err_start))
@@ -71,7 +72,7 @@ def main():
             ret_text = []
             ret_text.append(str(sys.exc_info()[0]))
             ret_text = '\n'.join(ret_text)
-            with open('critical_error.log', 'a+', encoding='utf-8') as f:
+            with open(os.path.join('database', 'critical_error.log'), 'a+', encoding='utf-8') as f:
                 f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()),))
                 f.write('Exception occurred while exception handling!\n')
                 f.write(ret_text)
