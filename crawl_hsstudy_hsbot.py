@@ -66,7 +66,8 @@ translate_table = {
         'TROLL': '라스타칸의 대난투',
         'TRLA': '라스타칸의 대난투 모험모드',
         'DALARAN': '어둠의 반격',
-        'DALA': '어둠의 반격 모험모드'
+        'DALA': '어둠의 반격 모험모드',
+        'ULDUM': '울둠의 구원자'
     },
     'adventure': {
         'NAX': 'NAXA',
@@ -130,6 +131,7 @@ translate_table = {
         'MEGA_WINDFURY': '광풍',
         'MODULAR': '합체',
         'OVERKILL': '압살',
+        'REBORN': '환생',
         'TWINSPELL': '이중 주문'
     }
 }
