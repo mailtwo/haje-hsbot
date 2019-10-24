@@ -142,13 +142,13 @@ def on_read(**payload):
         msg_info = payload['data']
         wb = payload['web_client']
         if 'user' not in msg_info or msg_info['user'][0] != 'U':
-            continue
+            return
         if msg_info['channel'][:2] != 'DA' and msg_info['channel'] != filter_channel:
-            continue
+            return
         text = msg_info['text']
         op = '하스봇엄마!'
         if text[:len(op)] != op:
-            continue
+            return
         proc = process_message(wb, mode, sc, proc, text[len(op):], user=msg_info['user'])
         time.sleep(0.01)
     except Exception as e:
