@@ -131,12 +131,10 @@ def process_message(wb, mode, sc, proc, msg, user=None):
 
     return proc
 
-@SlackClient.run_on(event='open')
 def initiate(**payload):
     wb = payload['web_client']
     proc = process_message(wb, mode, sc, proc, '시작', user=None)
 
-@SlackClient.run_on(event='message')
 def on_read(**payload):
     try:
         msg_info = payload['data']
@@ -189,6 +187,8 @@ def main():
     while True:
         try:
             sc = SlackClient(token=token_id)
+            SlackClient.run_on(event='message')(on_read)
+            SlackClient.run_on(event='open')(initiate)
             sc.start()
         except TimeoutError as e:
             pass
