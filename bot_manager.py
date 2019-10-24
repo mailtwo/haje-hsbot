@@ -2,12 +2,12 @@ import os
 import io
 import json
 import sys
-import pandas as pd
 import threading
 import time
 import traceback
 import datetime
-from slackclient import SlackClient
+import pandas as pd
+from  slack.rtm.client import RTMClient as SlackClient
 from db_connector import DBConnector
 from db_connector import hs_expansion_priority
 from crawl_hsstudy_page import crawl_card_data
@@ -74,6 +74,8 @@ class BotManager():
                 self.file_db = pd.read_hdf(self.file_db_path)
             except:
                 os.remove(self.file_db_path)
+        data_info = {'stop': False}
+        self.data_info = data_info
 
         # card_info, err = crawl_card_data('power-word-replicate')
         # if err:
@@ -296,14 +298,9 @@ class BotManager():
 
     def connect(self):
         assert self.slack_token is not None
-        self.sc = SlackClient(self.slack_token)
+        self.sc = SlackClient(token=self.slack_token)
 
-        if not self.sc.rtm_connect(with_team_state=False, auto_reconnect=True):
-            print('Error while sc.rtm_connect()')
-            return False
-
-        # self.sc.server.websocket.sock.setblocking(1)
-        print('Start running...')
+        SlackClient.run_on(event='message')(self.on_read)
         return True
 
     def file_db_remover_thread(self, data_info):
@@ -362,66 +359,73 @@ class BotManager():
             sleep_time = sleep_delay
 
     def run(self):
-        data_info = {'stop': False}
-        t = threading.Thread(target=self.file_db_remover_thread, args=(data_info, ))
+        t = threading.Thread(target=self.file_db_remover_thread, args=(self.data_info, ))
         t.start()
+        self.file_thread = t
+
+        self.sc.start()
+        # self.sc.server.websocket.sock.setblocking(1)
+        print('Start running...')
+
+    def on_read(self, **payload):
+        data_info = self.data_info
         err = 0
-        while self.sc.server.connected:
-            msg_list = self.sc.rtm_read()
-            try:
-                for msg_info in msg_list:
-                    msg_type = self.detect_msg_type(msg_info)
-                    if msg_type == MSG_TYPE['user_query']:
-                        self.process_user_query(msg_info)
-                    elif msg_type == MSG_TYPE['user_card_text_query']:
-                        self.process_user_query(msg_info, is_text_for_card_text=True)
-                    elif msg_type == MSG_TYPE['in_channel_msg']:
-                        self.process_bot_instruction(msg_info)
-                    elif msg_type == MSG_TYPE['insert_alias']:
-                        text = msg_info['text']
-                        bracket_finder = text.find('[[')
-                        rbracket_finder = text.rfind(']]')
-                        if bracket_finder >= 0 and rbracket_finder < 0:
-                            continue
-                        msg_pair = self.process_insert_alias(text[bracket_finder+2:rbracket_finder])
-                        self.send_msg_pair(msg_pair)
-                time.sleep(0.1)
-            except ConnectionAbortedError as e:
+        try:
+            msg_info = payload['data']
+            self.wb = payload['web_client']
+            msg_type = self.detect_msg_type(msg_info)
+            if msg_type == MSG_TYPE['user_query']:
+                self.process_user_query(msg_info)
+            elif msg_type == MSG_TYPE['user_card_text_query']:
+                self.process_user_query(msg_info, is_text_for_card_text=True)
+            elif msg_type == MSG_TYPE['in_channel_msg']:
+                self.process_bot_instruction(msg_info)
+            elif msg_type == MSG_TYPE['insert_alias']:
+                text = msg_info['text']
+                bracket_finder = text.find('[[')
+                rbracket_finder = text.rfind(']]')
+                if bracket_finder >= 0 and rbracket_finder < 0:
+                    return err
+                msg_pair = self.process_insert_alias(text[bracket_finder + 2:rbracket_finder])
+                self.send_msg_pair(msg_pair)
+            time.sleep(0.1)
+        except ConnectionAbortedError as e:
+            ret_text = []
+            ret_text.append('오류 발생')
+            ret_text.append(str(sys.exc_info()[0]))
+            ret_text = '\n'.join(ret_text)
+            with open(os.path.join('database', 'error.log'), 'a+') as f:
+                f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()),))
+                f.write(ret_text)
+                f.write(traceback.format_exc())
+                f.flush()
+            data_info['stop'] = True
+            self.file_thread.join()
+            err = 1
+            if self.mode == 'debug':
+                raise e
+        except Exception as e:
+            if not isinstance(e, TimeoutError):
                 ret_text = []
                 ret_text.append('오류 발생')
                 ret_text.append(str(sys.exc_info()[0]))
                 ret_text = '\n'.join(ret_text)
-                with open(os.path.join('database', 'error.log'), 'a+') as f:
-                    f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
+                with open(os.path.join('database', 'error.log'), 'a+', encoding='utf-8') as f:
+                    f.write(
+                        '===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()),))
                     f.write(ret_text)
                     f.write(traceback.format_exc())
                     f.flush()
+                msg_pair = MsgPair('simple_txt', ret_text)
+                self.send_msg_pair(msg_pair)
                 data_info['stop'] = True
-                t.join()
+                self.file_thread.join()
                 err = 1
                 if self.mode == 'debug':
                     raise e
-            except Exception as e:
-                if not isinstance(e, TimeoutError):
-                    ret_text = []
-                    ret_text.append('오류 발생')
-                    ret_text.append(str(sys.exc_info()[0]))
-                    ret_text = '\n'.join(ret_text)
-                    with open(os.path.join('database', 'error.log'), 'a+', encoding='utf-8') as f:
-                        f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()), ))
-                        f.write(ret_text)
-                        f.write(traceback.format_exc())
-                        f.flush()
-                    msg_pair = MsgPair('simple_txt', ret_text)
-                    self.send_msg_pair(msg_pair)
-                    data_info['stop'] = True
-                    t.join()
-                    err = 1
-                    if self.mode == 'debug':
-                        raise e
 
-            if err > 0:
-                return err
+        if err > 0:
+            return err
 
     def close(self):
         if self.sc is None:
@@ -429,8 +433,6 @@ class BotManager():
         self.sc = None
 
     def detect_msg_type(self, msg_info):
-        if msg_info['type'] != 'message':
-            return MSG_TYPE['invalid']
         if 'user' not in msg_info or msg_info['user'][0] != 'U':
             return MSG_TYPE['invalid']
         if msg_info['user'] == 'U6ABBRKKR': #if 'username' in msg_info and msg_info['user_id'] == 'chi':
@@ -695,13 +697,12 @@ class BotManager():
     def send_message(self, msg_text, channel=None, user=None, args=None):
         if channel is None:
             channel = self.channel_id
-        assert self.sc is not None
+        assert self.wb is not None
         unfurl_links = 'false'
         if args is not None and 'unfurl_links' in args:
             unfurl_links = args['unfurl_links']
         if user is not None:
-            self.sc.api_call(
-                'chat.postMessage',
+            self.wb.chat_postMessage(
                 channel=channel,
                 username='하스봇',
                 icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
@@ -710,8 +711,7 @@ class BotManager():
                 unfurl_links=unfurl_links
             )
         else:
-            self.sc.api_call(
-                'chat.postMessage',
+            self.wb.chat_postMessage(
                 channel=channel,
                 username='하스봇',
                 icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
@@ -722,9 +722,8 @@ class BotManager():
     def send_attach_message(self, msg_info, channel=None, args=None):
         if channel is None:
             channel = self.channel_id
-        assert self.sc is not None
-        self.sc.api_call(
-            'chat.postMessage',
+        assert self.wb is not None
+        self.wb.chat_postMessage(
             channel=channel,
             username='하스봇',
             icon_url='https://emoji.slack-edge.com/T025GK74E/hearthstone/589f51fac849905f.png',
@@ -734,9 +733,8 @@ class BotManager():
     def upload_snippet(self, raw_text, raw_title='', channel=None, args=None):
         if channel is None:
             channel = self.channel_id
-        assert self.sc is not None
-        result = self.sc.api_call(
-            'files.upload',
+        assert self.wb is not None
+        result = self.wb.files_upload(
             channels=channel,
             file=io.BytesIO(str.encode(raw_text)),
             filetype='text',

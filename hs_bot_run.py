@@ -53,7 +53,6 @@ def run_program(mode):
             is_init = False
     return 0
 
-
 def main():
     mode = 'release'
     if len(sys.argv) == 2:
