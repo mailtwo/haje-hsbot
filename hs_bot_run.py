@@ -24,9 +24,9 @@ def run_program(mode):
             if is_init:
                 msg_pair = MsgPair('simple_txt', '하스봇이 재시작 되었습니다.')
                 bot_mgr.send_msg_pair(msg_pair)
-            is_init = True
 
             ret = bot_mgr.run()
+            is_init = True
             if ret == 0:
                 break
             else:
