@@ -188,7 +188,6 @@ def main():
         try:
             sc = SlackClient(token=token_id)
             SlackClient.run_on(event='message')(on_read)
-            SlackClient.run_on(event='open')(initiate)
             sc.start()
         except TimeoutError as e:
             pass
