@@ -67,7 +67,8 @@ translate_table = {
         'TRLA': '라스타칸의 대난투 모험모드',
         'DALARAN': '어둠의 반격',
         'DALA': '어둠의 반격 모험모드',
-        'ULDUM': '울둠의 구원자'
+        'ULDUM': '울둠의 구원자',
+        'DRAGONS': '용의 강림'
     },
     'adventure': {
         'NAX': 'NAXA',
@@ -137,6 +138,7 @@ translate_table = {
 }
 keyword_keys = list(translate_table['keywords'].keys())
 ref_keywords_key = ['RECRUIT', 'JADE_GOLEM', 'IMMUNE', 'FREEZE', 'COUNTER', 'DISCOVER','ADAPT']
+IGNORE_SET = ['HERO_SKINS', 'TB', 'CREDITS', 'MISSIONS', 'CHEAT', 'SLUSH', 1003, 'WILD_EVENT', 'BATTLEGROUNDS']
 
 card_db_col = ['web_id','orig_name', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
 card_db_col += keyword_keys
@@ -218,7 +220,7 @@ def start_crawling(db_data, db_root):
         card_info['img_url'] = img_url
         if 'type' in card_info and (card_info['type'] == 'ENCHANTMENT'):
             continue
-        if 'set' in card_info and card_info['set'] in ['HERO_SKINS', 'TB', 'CREDITS', 'MISSIONS', 'CHEAT', 'SLUSH', 1003]:
+        if 'set' in card_info and card_info['set'] in IGNORE_SET:
             continue
         if 'name' not in card_info:
             continue
