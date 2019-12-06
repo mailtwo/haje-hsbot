@@ -218,6 +218,7 @@ def start_crawling(db_data, db_root):
 
     possible_data = []
     name_dict = {}
+    additional_info = {}
 
     for card_id, card_name, img_url in zip(card_list, card_names, img_list):
         card_info = card_data[card_id]
@@ -228,6 +229,7 @@ def start_crawling(db_data, db_root):
             continue
         if 'name' not in card_info:
             continue
+
         if 'text' in card_info:
             if card_info['text'][:3] == '[x]':
                 card_info['text'] = card_info['text'][3:]
@@ -237,6 +239,16 @@ def start_crawling(db_data, db_root):
                 .replace('<i>', '_').replace('</i> ', '_ ').replace('</i>', '_ ').replace('<br/>', ' ')
         else:
             card_info['text'] = ''
+
+        if (card_info['name'] == '대재앙의 갈라크론드' or card_info['name'] == '아제로스의 종말 갈라크론드') and 'text' in card_info:
+            cur_card_id = card_info['id'][:-2]
+            if cur_card_id not in additional_info:
+                additional_info[cur_card_id] = {}
+            if 'text' not in additional_info[cur_card_id]:
+                additional_info[cur_card_id]['text'] = []
+            additional_info[cur_card_id]['text'].append(('\n' + str(card_info['text'])))
+            continue
+
         if '_BOSS_' in card_info['id']:
             continue
         card_info['text'] = card_info['text'].replace(chr(160), chr(32))
@@ -305,11 +317,17 @@ def start_crawling(db_data, db_root):
                 print(str(card_info['name']) + ': cardClass not found')
                 print(card_info)
                 card_info['cardClass'] = 'NEUTRAL'
+
+            card_text = card_info['text']
+            if card_info['id'] in additional_info:
+                if 'text' in additional_info[card_info['id']]:
+                    for elem in additional_info[card_info['id']]['text']:
+                        card_text += elem
             index_data = {  'web_id': card_info['id'],
                             'orig_name': card_info['name'],
                             'name': preprocess_name(card_info['name']),
                             'eng_name': preprocess_name(card_info['eng_name']),
-                            'card_text': card_info['text'],
+                            'card_text': card_text,
                             'hero': translate_table['hero'][card_info['cardClass']],
                             'type': translate_table['type'][card_info['type']],
                             'cost': card_info['cost'] if 'cost' in card_info else 0,
