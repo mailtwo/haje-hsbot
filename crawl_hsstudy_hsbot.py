@@ -68,6 +68,7 @@ translate_table = {
         'DALARAN': '어둠의 반격',
         'DALA': '어둠의 반격 모험모드',
         'ULDUM': '울둠의 구원자',
+        'ULDA': '울둠의 구원자 모험모드',
         'DRAGONS': '용의 강림'
     },
     'adventure': {
@@ -80,6 +81,7 @@ translate_table = {
         'BOTA': 'BOTA',
         'TRLA': 'TRLA',
         'DALA': 'DALA',
+        'ULDA': 'ULDA'
     },
     'race': {
         'MURLOC': '멀록',
@@ -133,7 +135,9 @@ translate_table = {
         'MODULAR': '합체',
         'OVERKILL': '압살',
         'REBORN': '환생',
-        'TWINSPELL': '이중 주문'
+        'TWINSPELL': '이중 주문',
+        'SIDEQUEST': '사이드 퀘스트',
+        'INVOKE': '기원'
     }
 }
 keyword_keys = list(translate_table['keywords'].keys())
@@ -227,6 +231,8 @@ def start_crawling(db_data, db_root):
         if 'text' in card_info:
             if card_info['text'][:3] == '[x]':
                 card_info['text'] = card_info['text'][3:]
+            if 'set' in card_info and card_info['set'] == 'DRAGONS':
+                card_info['text'] = card_info['text'].replace('[x]<i>(', '(두 번 *기원* 하면 강화됩니다.)')
             card_info['text'] = card_info['text'].replace('\n', ' ').replace('$', '').replace('#', '').replace('<b>', '*').replace('</b> ', '* ').replace('</b>', '* ') \
                 .replace('<i>', '_').replace('</i> ', '_ ').replace('</i>', '_ ').replace('<br/>', ' ')
         else:
@@ -295,6 +301,10 @@ def start_crawling(db_data, db_root):
             #     print(card_info['name'])
             #     card_info['set'] = 'HOF'
             # index_key = str([card_info['cost'], card_info['attack'], card_info['health']])
+            if 'cardClass' not in card_info:
+                print(str(card_info['name']) + ': cardClass not found')
+                print(card_info)
+                card_info['cardClass'] = 'NEUTRAL'
             index_data = {  'web_id': card_info['id'],
                             'orig_name': card_info['name'],
                             'name': preprocess_name(card_info['name']),
@@ -326,6 +336,8 @@ def start_crawling(db_data, db_root):
                     index_data[v] = True
             if '*광풍*' in card_info['text']:
                 index_data['MEGA_WINDFURY'] = True
+            if '*기원*' in card_info['text']:
+                index_data['INVOKE'] = True
             # if index_key in db_data[card_info['hero']]['index']:
             #     db_data[card_info['hero']]['index'][index_key].append(index_data)
             # else:
