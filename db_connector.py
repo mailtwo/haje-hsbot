@@ -14,7 +14,7 @@ hs_expansion_group = {
     '야생': ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹', '가젯잔', '카라잔', '고대 신', '운고로', '코볼트', '얼어붙은 왕좌'],
     '모험모드': ['낙스라마스 모험모드', '검은바위 산 모험모드', '탐험가 연맹 모험모드', '카라잔 모험모드', '얼어붙은 왕좌 모험모드', '코볼트 모험모드', '마녀숲 모험모드', '시간의 선술집', '라스타칸의 대난투 모험모드', '어둠의 반격 모험모드', '울둠의 구원자 모험모드']
 }
-areana_expansion_group = {
+arena_expansion_group = {
     '투기장': ['오리지널', '기본', '검은바위 산', '카라잔', '대 마상시합', '얼어붙은 왕좌', '라스타칸의 대난투', '용의 강림']
 }
 hs_expansion_priority = ['정확', '정규', '야생', '모험모드']
@@ -200,8 +200,8 @@ class DBConnector(object):
                 lambda word: {'value': word}),
             (list(hs_expansion_group.keys()), 'expansion_group',
                 lambda word: {'value': word}),
-            (list(areana_expansion_group.keys()), 'arena_group',
-                lambda word: {'value': word}),
+            (list(arena_expansion_group.keys()), 'arena_group',
+             lambda word: {'value': word}),
             (list(self.type_alias.keys()), 'type',
                 lambda word: {
                     'value': self.type_alias[word]
@@ -369,8 +369,8 @@ class DBConnector(object):
                             expansion.append({'value': v, 'neg': False, 'op':'eq'})
             if 'arena_group' in stat_query:
                 for token in stat_query['arena_group']:
-                    if token['value'] in areana_expansion_group.keys():
-                        for v in areana_expansion_group[token['value']]:
+                    if token['value'] in arena_expansion_group.keys():
+                        for v in arena_expansion_group[token['value']]:
                             expansion.append({'value': v, 'neg': False, 'op':'eq'})
             if len(expansion) > 0:
                 stat_query['expansion'] = expansion
