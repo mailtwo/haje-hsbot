@@ -69,7 +69,9 @@ translate_table = {
         'DALA': '어둠의 반격 모험모드',
         'ULDUM': '울둠의 구원자',
         'ULDA': '울둠의 구원자 모험모드',
-        'DRAGONS': '용의 강림'
+        'DRAGONS': '용의 강림',
+        'DRGA': '용의 강림 모험모드',
+        'YEAR_OF_THE_DRAGON': '용의 강림 모험모드'
     },
     'adventure': {
         'NAX': 'NAXA',
@@ -81,7 +83,8 @@ translate_table = {
         'BOTA': 'BOTA',
         'TRLA': 'TRLA',
         'DALA': 'DALA',
-        'ULDA': 'ULDA'
+        'ULDA': 'ULDA',
+        'DRGA': 'DRGA'
     },
     'race': {
         'MURLOC': '멀록',
