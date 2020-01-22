@@ -81,7 +81,7 @@ class BotManager():
         # else:
         #     self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path, postprocess=False)
         #     #self.send_message('성공적으로 등록되었습니다.', user_id)
-        # user_query = '용의 강림'
+        # user_query = '하늘 약탈자'
         # stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
         # print (stat_query, text_query, err_msg)
         # inner_result = None
@@ -143,6 +143,39 @@ class BotManager():
 
         return '```' + cur_help_dict['text'] + '```'
 
+    def process_single_card(self, card, exact_match):
+        stat_text = ''
+        if card['type'] == '하수인' or card['type'] == '무기':
+            stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
+        elif card['type'] == '주문' or card['type'] == '영웅 교체':
+            stat_text = '%d코스트' % (card['cost'],)
+        faction_text = '%s%s %s %s%s카드' % (('' if (not exact_match) else '- '),
+                                           card['expansion'], card['hero'], card['rarity'],
+                                           (' ' if len(card['rarity']) > 0 else ''))
+        stat_text = '%s %s%s%s' % (stat_text, card['race'], ' ' if len(card['race']) > 1 else '', card['type'])
+        card_info = {
+            'author_name': faction_text + '\n' + stat_text,
+            'footer': '이미지',
+            'title': card['orig_name'],
+            'color': '#2eb886',
+            'title_link': card['detail_url'],
+            'image_url': card['img_url'],
+        }
+        field_info = []
+        if len(card['card_text']) > 0:
+            field_info.append(
+                {
+                    'title': '효과',
+                    'value': card['card_text']
+                }
+            )
+        if len(field_info) > 0:
+            card_info['fields'] = field_info
+
+        msg = [card_info]
+        return msg
+
+
     def process_card_message(self, query_text, cards, group_df):
         add_text_gp = {}
         add_wo_url_gp = {}
@@ -185,35 +218,8 @@ class BotManager():
 
         if cards.shape[0] == 1:
             card = cards.iloc[0]
-            stat_text = ''
-            if card['type'] == '하수인' or card['type'] == '무기':
-                stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
-            elif card['type'] == '주문' or card['type'] == '영웅 교체':
-                stat_text = '%d코스트' % (card['cost'], )
-            faction_text = '%s%s %s %s%s카드' % (('' if (not exact_match) else '- '),
-                                               card['expansion'], card['hero'], card['rarity'],
-                                               (' ' if len(card['rarity']) > 0 else ''))
-            stat_text = '%s %s%s%s' % (stat_text, card['race'], ' ' if len(card['race']) > 1 else '', card['type'])
-            card_info = {
-                'author_name': faction_text + '\n'+stat_text,
-                'footer': '이미지',
-                'title': card['orig_name'],
-                'color': '#2eb886',
-                'title_link': card['detail_url'],
-                'image_url': card['img_url'],
-            }
-            field_info = []
-            if len(card['card_text']) > 0:
-                field_info.append(
-                    {
-                        'title': '효과',
-                        'value': card['card_text']
-                    }
-                )
-            if len(field_info) > 0:
-                card_info['fields'] = field_info
+            msg = self.process_single_card(card, exact_match)
 
-            msg = [card_info]
             for group_key in hs_expansion_priority:
                 if not add_text_valid[group_key]:
                     continue
@@ -226,20 +232,44 @@ class BotManager():
             self.send_attach_message(msg)
             # easter-egg
             if card['web_id'] == 'CS2_162':
-                self.send_msg_pair(MsgPair('simple_txt', '지금 바로 접속!\n<https://www.twitch.tv/twilightuuuu/>'), {'unfurl_links': 'true'})
+                self.send_msg_pair(MsgPair('simple_txt', '지금 바로 접속!\n<https://www.twitch.tv/twilightuuuu/>'),
+                                   {'unfurl_links': 'true'})
 
         elif cards.shape[0] <= 5:
-            ret_text = []
-            for idx in range(cards.shape[0]):
-                card = cards.iloc[idx]
-                ret_text.append('<%s|%s>' % (card['detail_url'],
-                                            '[' + card['orig_name'] + ']'))
-            ret_text = ', '.join(ret_text)
-            for group_key in hs_expansion_priority:
-                if not add_text_valid[group_key]:
-                    continue
-                ret_text = ret_text + '\n' + add_text_gp[group_key]
-            self.send_message(ret_text)
+            if exact_match:
+                msg = []
+                for idx in range(cards.shape[0]):
+                    card = cards.iloc[idx]
+                    msg.extend(self.process_single_card(card, exact_match))
+
+                for group_key in hs_expansion_priority:
+                    if not add_text_valid[group_key]:
+                        continue
+                    add_info = {
+                        'fields': [{
+                            'value': add_text_gp[group_key]
+                        }]
+                    }
+                    msg.append(add_info)
+                add_info = {
+                    'fields': [{
+                        'value': '블코야!!!'
+                    }]
+                }
+                msg.append(add_info)
+                self.send_attach_message(msg)
+            else:
+                ret_text = []
+                for idx in range(cards.shape[0]):
+                    card = cards.iloc[idx]
+                    ret_text.append('<%s|%s>' % (card['detail_url'],
+                                                '[' + card['orig_name'] + ']'))
+                ret_text = ', '.join(ret_text)
+                for group_key in hs_expansion_priority:
+                    if not add_text_valid[group_key]:
+                        continue
+                    ret_text = ret_text + '\n' + add_text_gp[group_key]
+                self.send_message(ret_text)
 
         else:
             ret_text = []

@@ -519,7 +519,10 @@ class DBConnector(object):
             ret_key = []
             for idx, each_name in enumerate(total_name_list):
                 if raw_query == each_name:
-                    exactly_key = [self.mem_db['key'][idx]]
+                    if exactly_match:
+                        exactly_key.append(self.mem_db['key'][idx])
+                    else:
+                        exactly_key = [self.mem_db['key'][idx]]
                     exactly_match = True
             for idx, each_name in enumerate(name_list):
                 if raw_query != each_name and text_query in each_name:

@@ -71,7 +71,7 @@ translate_table = {
         'ULDA': '울둠의 구원자 모험모드',
         'DRAGONS': '용의 강림',
         'DRGA': '용의 강림 모험모드',
-        'YEAR_OF_THE_DRAGON': '용의 강림 모험모드'
+        'YEAR_OF_THE_DRAGON': '용의 강림'
     },
     'adventure': {
         'NAX': 'NAXA',
