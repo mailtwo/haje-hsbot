@@ -1,3 +1,3 @@
-slackclient == 1.3.1
+slackclient
 pandas
 websocket-client

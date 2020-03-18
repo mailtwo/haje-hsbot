@@ -5,14 +5,19 @@ import time
 import subprocess
 import datetime
 import traceback
-from slackclient import SlackClient
+import slack
 from websocket import WebSocketTimeoutException
 
 cur_os_type = 'linux'
 if sys.platform.startswith('win'):
     cur_os_type = 'win'
 
-def process_message(mode, sc, proc, msg, user=None):
+
+def process_message(mode, proc, msg, user=None):
+    global sc
+    global wc
+    global global_data
+
     argv = msg.strip().split()
     if argv[0] == '종료':
         if proc is None:
@@ -25,8 +30,7 @@ def process_message(mode, sc, proc, msg, user=None):
                 out = os.popen('kill -9 %i' % proc.pid).read()
             else:
                 out = os.popen('taskkill /F /T /PID %i' % proc.pid).read()
-            sc.api_call(
-                'chat.postMessage',
+            wc.chat_postMessage(
                 username='하스봇엄마',
                 channel=user,
                 user=user,
@@ -50,8 +54,7 @@ def process_message(mode, sc, proc, msg, user=None):
             text = '하스봇 프로세스가 시작되었습니다.'
         else:
             text = '프로세스가 알수 없는 이유로 종료되었습니다: %d' % (ret, )
-        sc.api_call(
-            'chat.postMessage',
+        wc.chat_postMessage(
             username='하스봇엄마',
             channel=user,
             user=user,
@@ -77,8 +80,7 @@ def process_message(mode, sc, proc, msg, user=None):
         if mode == 'debug':
             print (op)
         gitout = os.popen(op).read()
-        sc.api_call(
-            'chat.postMessage',
+        wc.chat_postMessage(
             username='하스봇엄마',
             channel=user,
             user=user,
@@ -102,8 +104,7 @@ def process_message(mode, sc, proc, msg, user=None):
         else:
             f_str = 'error.log가 없습니다.'
             open(os.path.join('database', 'error.log'), 'w').close()
-        sc.api_call(
-            'chat.postMessage',
+        wc.chat_postMessage(
             username='하스봇엄마',
             channel=user,
             user=user,
@@ -126,8 +127,7 @@ def process_message(mode, sc, proc, msg, user=None):
         else:
             f_str = 'critical_error.log가 없습니다.'
             open(os.path.join('database', 'critical_error.log'), 'w').close()
-        sc.api_call(
-            'chat.postMessage',
+        wc.chat_postMessage(
             channel=user,
             username='하스봇엄마',
             user=user,
@@ -137,7 +137,13 @@ def process_message(mode, sc, proc, msg, user=None):
     return proc
 
 
+sc = None
+wc = None
+global_data = {}
 def main():
+    global sc
+    global wc
+    global global_data
     mode = 'debug'
     if len(sys.argv) == 2:
         mode = sys.argv[1].lower()
@@ -156,54 +162,61 @@ def main():
         token_id = token_data['token_id']
         channel_id = token_data['channels'][target_channel_name]
         filter_channel = channel_id
+        global_data['filter_channel'] = filter_channel
 
     proc = None
-    while True:
-        try:
-            sc = SlackClient(token_id)
-            if not sc.rtm_connect():
-                print('Error while sc.rtm_connect()')
-                return False
-            if mode == 'release' and proc is None:
-                proc = process_message(mode, sc, proc, '시작', user=None)
-            while sc.server.connected:
-                msg_list = sc.rtm_read()
-                try:
-                    for msg_info in msg_list:
-                        if msg_info['type'] != 'message':
-                            continue
-                        if 'user' not in msg_info or msg_info['user'][0] != 'U':
-                            continue
-                        if msg_info['channel'][:2] != 'DA' and msg_info['channel'] != filter_channel:
-                            continue
-                        text = msg_info['text']
-                        op = '하스봇엄마!'
-                        if text[:len(op)] != op:
-                            continue
-                        proc = process_message(mode, sc, proc, text[len(op):], user=msg_info['user'])
-                    time.sleep(0.1)
-                except Exception as e:
-                    if mode == 'debug':
-                        raise e
-                    else:
-                        ret_text = []
-                        ret_text.append(str(sys.exc_info()[0]))
-                        ret_text = '\n'.join(ret_text)
-                        with open('motherbot_error.log', 'a+', encoding='utf-8') as f:
-                            f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()),))
-                            f.write('Exception occurred while exception handling!\n')
-                            f.write(ret_text)
-                            f.write(traceback.format_exc())
-                            f.flush()
-        except TimeoutError as e:
-            pass
-        except WebSocketTimeoutException as e:
-            pass
-        except:
-            time.sleep(60)
-            pass
-        time.sleep(1)
+    try:
+        sc = slack.RTMClient(token=token_id)
+        wc = slack.WebClient(token_id, timeout=30)
 
+        if mode == 'release' and proc is None:
+            proc = process_message(mode, proc, '시작', user=None)
+        global_data['proc'] = proc
+        global_data['mode'] = mode
+
+        if not sc.start():
+            print('Error while sc.rtm_connect()')
+            return False
+    except TimeoutError as e:
+        pass
+    except WebSocketTimeoutException as e:
+        pass
+    except:
+        time.sleep(60)
+        pass
+    time.sleep(1)
+
+@slack.RTMClient.run_on(event='message')
+def run(**payload):
+    global sc
+    global wc
+    global global_data
+
+    msg_info = payload['data']
+    try:
+        if 'user' not in msg_info or msg_info['user'][0] != 'U':
+            return
+        if msg_info['channel'][:2] != 'DA' and msg_info['channel'] != global_data['filter_channel']:
+            return
+        text = msg_info['text']
+        op = '하스봇엄마!'
+        if text[:len(op)] != op:
+            return
+        proc = process_message(global_data['mode'], global_data['proc'], text[len(op):], user=msg_info['user'])
+        global_data['proc'] = proc
+    except Exception as e:
+        if global_data['mode'] == 'debug':
+            raise e
+        else:
+            ret_text = []
+            ret_text.append(str(sys.exc_info()[0]))
+            ret_text = '\n'.join(ret_text)
+            with open('motherbot_error.log', 'a+', encoding='utf-8') as f:
+                f.write('===== Current time : %s =====\n' % ('{0:%Y-%m-%d_%H:%M:%S}'.format(datetime.datetime.now()),))
+                f.write('Exception occurred while exception handling!\n')
+                f.write(ret_text)
+                f.write(traceback.format_exc())
+                f.flush()
 
 
 if __name__ == '__main__':
