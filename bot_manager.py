@@ -12,6 +12,14 @@ from db_connector import DBConnector
 from db_connector import hs_expansion_priority
 from crawl_hsstudy_page import crawl_card_data
 
+# import logging
+# root = logging.getLogger('slack.rtm.client')
+# root.setLevel(logging.DEBUG)
+# handler = logging.StreamHandler(sys.stdout)
+# handler.setLevel(logging.DEBUG)
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# handler.setFormatter(formatter)
+# root.addHandler(handler)
 
 MSG_TYPE = {
     'invalid': -1,
@@ -575,8 +583,7 @@ class BotManager():
             msg_pair = self.process_add_card(text[4:].strip().split(' '), msg_info['user'])
             self.send_msg_pair(msg_pair)
         elif arg_list[0] == '카드보기':
-            msg_pair = self.process_view_card(msg_info['user'])
-            self.send_msg_pair(msg_pair)
+            self.process_view_card(msg_info['user'])
         elif arg_list[0] == '핑':
             self.send_message('퐁', msg_info['user'])
 

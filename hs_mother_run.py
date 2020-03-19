@@ -12,6 +12,15 @@ cur_os_type = 'linux'
 if sys.platform.startswith('win'):
     cur_os_type = 'win'
 
+# import logging
+# root = logging.getLogger('slack.rtm.client')
+# root.setLevel(logging.DEBUG)
+# handler = logging.StreamHandler(sys.stdout)
+# handler.setLevel(logging.DEBUG)
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# handler.setFormatter(formatter)
+# root.addHandler(handler)
+
 
 def process_message(mode, proc, msg, user=None):
     global sc
@@ -54,12 +63,13 @@ def process_message(mode, proc, msg, user=None):
             text = '하스봇 프로세스가 시작되었습니다.'
         else:
             text = '프로세스가 알수 없는 이유로 종료되었습니다: %d' % (ret, )
-        wc.chat_postMessage(
-            username='하스봇엄마',
-            channel=user,
-            user=user,
-            text=text
-        )
+        if user is not None:
+            wc.chat_postMessage(
+                username='하스봇엄마',
+                channel=user,
+                user=user,
+                text=text
+            )
 
     elif argv[0] == '재시작':
         if proc is None:
@@ -169,8 +179,6 @@ def main():
         sc = slack.RTMClient(token=token_id)
         wc = slack.WebClient(token_id, timeout=30)
 
-        if mode == 'release' and proc is None:
-            proc = process_message(mode, proc, '시작', user=None)
         global_data['proc'] = proc
         global_data['mode'] = mode
 
@@ -185,6 +193,16 @@ def main():
         time.sleep(60)
         pass
     time.sleep(1)
+
+@slack.RTMClient.run_on(event='open')
+def init(**payload):
+    global sc
+    global wc
+    global global_data
+
+    if global_data['mode'] == 'release' and global_data['proc'] is None:
+        proc = process_message(global_data['mode'], global_data['proc'], '시작', user=None)
+        global_data['proc'] = proc
 
 @slack.RTMClient.run_on(event='message')
 def run(**payload):
