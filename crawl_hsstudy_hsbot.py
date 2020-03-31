@@ -19,7 +19,8 @@ translate_table = {
         'WARRIOR': '전사',
         'NEUTRAL': '중립',
         'DREAM': '꿈',
-        'DEATHKNIGHT': '죽음의 기사'
+        'DEATHKNIGHT': '죽음의 기사',
+        'DEMONHUNTER': '악마사냥꾼'
     },
 
     'type': {
@@ -72,6 +73,7 @@ translate_table = {
         'DRAGONS': '용의 강림',
         'DRGA': '용의 강림 모험모드',
         'YEAR_OF_THE_DRAGON': '용의 강림',
+        'DEMON_HUNTER_INITIATE': '수습',
         'BLACK_TEMPLE': '황폐한 아웃랜드'
     },
     'adventure': {
@@ -141,7 +143,9 @@ translate_table = {
         'REBORN': '환생',
         'TWINSPELL': '이중 주문',
         'SIDEQUEST': '사이드 퀘스트',
-        'INVOKE': '기원'
+        'INVOKE': '기원',
+        'OUTCAST': '추방자',
+        'DORMANT': '휴면'
     }
 }
 keyword_keys = list(translate_table['keywords'].keys())
@@ -358,6 +362,8 @@ def start_crawling(db_data, db_root):
                     index_data[v] = True
             if '*광풍*' in card_info['text']:
                 index_data['MEGA_WINDFURY'] = True
+            if '*휴면*' in card_info['text']:
+                index_data['DORMANT'] = True
             if '*기원*' in card_info['text']:
                 index_data['INVOKE'] = True
             # if index_key in db_data[card_info['hero']]['index']:
