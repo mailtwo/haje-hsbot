@@ -74,7 +74,8 @@ translate_table = {
         'DRGA': '용의 강림 모험모드',
         'YEAR_OF_THE_DRAGON': '용의 강림',
         'DEMON_HUNTER_INITIATE': '수습',
-        'BLACK_TEMPLE': '황폐한 아웃랜드'
+        'BLACK_TEMPLE': '황폐한 아웃랜드',
+        'BATTLEGROUNDS': '전장'
     },
     'adventure': {
         'NAX': 'NAXA',
@@ -150,7 +151,8 @@ translate_table = {
 }
 keyword_keys = list(translate_table['keywords'].keys())
 ref_keywords_key = ['RECRUIT', 'JADE_GOLEM', 'IMMUNE', 'FREEZE', 'COUNTER', 'DISCOVER','ADAPT']
-IGNORE_SET = ['HERO_SKINS', 'TB', 'CREDITS', 'MISSIONS', 'CHEAT', 'SLUSH', 1003, 'WILD_EVENT', 'BATTLEGROUNDS']
+IGNORE_SET = ['HERO_SKINS', 'TB', 'CREDITS', 'MISSIONS', 'CHEAT', 'SLUSH', 1003, 'WILD_EVENT']
+IGNORE_TYPE = ['GAME_MODE_BUTTON', 'MOVE_MINION_HOVER_TARGET']
 
 card_db_col = ['web_id','orig_name', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
 card_db_col += keyword_keys
@@ -234,6 +236,8 @@ def start_crawling(db_data, db_root):
         if 'type' in card_info and (card_info['type'] == 'ENCHANTMENT'):
             continue
         if 'set' in card_info and card_info['set'] in IGNORE_SET:
+            continue
+        if 'type' in card_info and card_info['type'] in IGNORE_TYPE:
             continue
         if 'name' not in card_info:
             continue
