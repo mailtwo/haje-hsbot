@@ -169,12 +169,13 @@ class BotManager():
         stat_text = '%s %s%s%s' % (stat_text, card['race'], ' ' if len(card['race']) > 1 else '', card['type'])
         card_info = {
             'author_name': faction_text + '\n' + stat_text,
-            'footer': '이미지',
             'title': card['orig_name'],
             'color': '#2eb886',
             'title_link': card['detail_url'],
-            'image_url': card['img_url'],
         }
+        if len(card['img_url']) > 0:
+            card_info['footer'] = '이미지'
+            card_info['image_url'] = card['img_url']
         field_info = []
         if len(card['card_text']) > 0:
             field_info.append(

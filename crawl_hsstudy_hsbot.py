@@ -153,6 +153,7 @@ keyword_keys = list(translate_table['keywords'].keys())
 ref_keywords_key = ['RECRUIT', 'JADE_GOLEM', 'IMMUNE', 'FREEZE', 'COUNTER', 'DISCOVER','ADAPT']
 IGNORE_SET = ['HERO_SKINS', 'TB', 'CREDITS', 'MISSIONS', 'CHEAT', 'SLUSH', 1003, 'WILD_EVENT']
 IGNORE_TYPE = ['GAME_MODE_BUTTON', 'MOVE_MINION_HOVER_TARGET']
+IGNORE_IMAGE = ['BATTLEGROUNDS']
 
 card_db_col = ['web_id','orig_name', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
 card_db_col += keyword_keys
@@ -351,6 +352,8 @@ def start_crawling(db_data, db_root):
                             'img_url': card_info['img_url'],
                             'detail_url': detail_url,
             }
+            if card_info['set'] in IGNORE_IMAGE:
+                index_data['img_url'] = ''
             for v in keyword_keys:
                 index_data[v] = False
             if 'mechanics' in card_info:
