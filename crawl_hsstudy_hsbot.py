@@ -75,7 +75,8 @@ translate_table = {
         'YEAR_OF_THE_DRAGON': '용의 강림',
         'DEMON_HUNTER_INITIATE': '수습',
         'BLACK_TEMPLE': '황폐한 아웃랜드',
-        'BATTLEGROUNDS': '전장'
+        'BATTLEGROUNDS': '전장',
+        'SCHOLOMANCE': '스칼로맨스 아카데미'
     },
     'adventure': {
         'NAX': 'NAXA',
