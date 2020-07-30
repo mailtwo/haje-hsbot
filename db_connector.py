@@ -18,6 +18,7 @@ arena_expansion_group = {
     '투기장': ['오리지널', '기본', '검은바위 산', '카라잔', '대 마상시합', '얼어붙은 왕좌', '라스타칸의 대난투', '용의 강림'],
     '전장': ['전장']
 }
+hs_all_class_list =  ['드루이드', '사냥꾼', '마법사', '성기사', '사제', '도적', '주술사', '흑마법사', '전사', '중립', '꿈', '죽음의 기사', '악마사냥꾼']
 hs_expansion_priority = ['정확', '정규', '야생', '모험모드']
 hs_keywords = {
     '소집': 'RECRUIT',
@@ -132,7 +133,8 @@ class DBConnector(object):
                               '죽메:': '죽음의 메아리:',
                               '선택-': '선택 -',
                               '선택:': '선택 -'}
-        self.card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
+        self.card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
+        self.card_db_col.extend(['hero_%s'%each_class for each_class in hs_all_class_list])
         self.card_db_col += list(hs_keywords.values())
         self.new_expansion_name = None
         self.new_expansion_id = None#'RUMBLE'
@@ -157,7 +159,7 @@ class DBConnector(object):
         #     self.exp_group_query[k] = '( ' + expansion_query_str + ' )'
 
         self.parse_word_list = [
-            (list(self.hero_alias.keys()), 'hero',
+            (list(self.hero_alias.keys()), 'hero_list',
                 lambda word: {'value': self.hero_alias[word]}
              ),
             ('([0-9]+)([-+])?코(스트)?', 'cost',
@@ -248,7 +250,6 @@ class DBConnector(object):
             'name': '없음',
             'eng_name': 'none',
             'card_text': 'empty',
-            'hero': '중립',
             'type': '주문',
             'cost': 0,
             'attack': 0,
@@ -260,6 +261,9 @@ class DBConnector(object):
             'img_url': self.new_expansion_img,
             'detail_url': 'https://playhearthstone.com/ko-kr/'
         }
+        for each_class in hs_all_class_list:
+            default_card_data['hero_%s'%each_class] = 0
+        default_card_data['hero_중립'] = 1
         from crawl_hsstudy_hsbot import keyword_keys
         for k in keyword_keys:
             default_card_data['mechanics'].append(k)
@@ -420,6 +424,12 @@ class DBConnector(object):
                             cur_value_query.append('%s(%s %s %s)' % ('not ' if token['neg'] else '', k, op, str(v)))
                     else:
                         cur_value_query.append('%s(%s %s \"%s\")' % ('not ' if token['neg'] else '', k, op, v))
+
+            elif k == 'hero_list':
+                for token in t_list:
+                    v = token['value']
+                    db_key = 'hero_%s' % v
+                    cur_value_query.append('%s(%s %s \"%s\")' % ('not ' if token['neg'] else '', db_key, '==', '1'))
 
             elif k == 'keyword':
                 for token in t_list:

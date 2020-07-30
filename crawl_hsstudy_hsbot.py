@@ -156,14 +156,17 @@ IGNORE_SET = ['HERO_SKINS', 'TB', 'CREDITS', 'MISSIONS', 'CHEAT', 'SLUSH', 1003,
 IGNORE_TYPE = ['GAME_MODE_BUTTON', 'MOVE_MINION_HOVER_TARGET']
 IGNORE_IMAGE = ['BATTLEGROUNDS']
 
-card_db_col = ['web_id','orig_name', 'name', 'eng_name', 'card_text', 'hero', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
+card_db_col = ['web_id','orig_name', 'name', 'eng_name', 'card_text', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
+card_db_col.extend(['hero_%s' % e for e in translate_table['hero'].values()])
 card_db_col += keyword_keys
 
 force_run = True
 save_db = True
 
 def initial_db():
-    stat_value = ['None', 'None', 'None', 'None', 'None','None', 'None', 0, 0, 0, 'None', 'None', 'None','None', 'None']
+    stat_value = ['None', 'None', 'None', 'None', 'None','None', 0, 0, 0, 'None', 'None', 'None','None', 'None']
+    for each_value in translate_table['hero'].values():
+        stat_value.append(0)
     stat_value += [False for _ in range(len(keyword_keys))]
     card_db = pd.DataFrame([stat_value], columns=card_db_col)
     alias_db = pd.DataFrame([['None', 'None']], columns=['web_id', 'alias'])
@@ -329,7 +332,7 @@ def start_crawling(db_data, db_root):
             #     print(card_info['name'])
             #     card_info['set'] = 'HOF'
             # index_key = str([card_info['cost'], card_info['attack'], card_info['health']])
-            if 'cardClass' not in card_info:
+            if 'cardClass' not in card_info and 'classes' not in card_info:
                 print(str(card_info['name']) + ': cardClass not found')
                 print(card_info)
                 card_info['cardClass'] = 'NEUTRAL'
@@ -344,7 +347,7 @@ def start_crawling(db_data, db_root):
                             'name': preprocess_name(card_info['name']),
                             'eng_name': preprocess_name(card_info['eng_name']),
                             'card_text': card_text,
-                            'hero': translate_table['hero'][card_info['cardClass']],
+                            # 'hero': hero_info,
                             'type': translate_table['type'][card_info['type']],
                             'cost': card_info['cost'] if 'cost' in card_info else 0,
                             'attack': card_info['attack'] if 'attack' in card_info else 0,
@@ -355,6 +358,17 @@ def start_crawling(db_data, db_root):
                             'img_url': card_info['img_url'],
                             'detail_url': detail_url,
             }
+
+            if 'classes' in card_info and len(card_info['classes']) > 1:
+                hero_info = card_info['classes']
+            else:
+                hero_info = [card_info['cardClass']]
+
+            for each_value in translate_table['hero'].values():
+                index_data['hero_%s'%each_value] = 0
+            for each_class in hero_info:
+                index_data['hero_%s'%translate_table['hero'][each_class]] = 1
+
             if card_info['set'] in IGNORE_IMAGE:
                 index_data['img_url'] = ''
             for v in keyword_keys:

@@ -28,6 +28,7 @@ MSG_TYPE = {
     'insert_alias': 3,
     'user_card_text_query': 4
 }
+hs_all_class_list =  ['드루이드', '사냥꾼', '마법사', '성기사', '사제', '도적', '주술사', '흑마법사', '전사', '중립', '꿈', '죽음의 기사', '악마사냥꾼']
 file_db_col = ['date', 'file_id']
 cur_mgr = None
 
@@ -95,24 +96,24 @@ class BotManager():
         # else:
         #     self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path, postprocess=False)
         #     #self.send_message('성공적으로 등록되었습니다.', user_id)
-        # user_query = '하늘 약탈자'
-        # stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
-        # print (stat_query, text_query, err_msg)
-        # inner_result = None
-        # if err_msg is None:
-        #     if len(stat_query.keys()) > 0:
-        #         inner_result = self.db.query_stat(stat_query)
-        #         print(inner_result.shape[0])
-        #     card, group_df = self.db.query_text(inner_result, stat_query, text_query, raw_query)
-        #     print(card.shape[0], [df.shape[0] for df in group_df.values()])
-        #     print('--- %s ---' % ('기본 출력', ))
-        #     for idx, row in card.iterrows():
-        #         print(row['orig_name'], row['expansion'])
-        #     for key, df in group_df.items():
-        #         print('--- %s ---' % (key, ))
-        #         for idx, row in df.iterrows():
-        #             print(row['orig_name'], row['expansion'])
-        # return
+        user_query = '가젯잔 사제'
+        stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
+        print (stat_query, text_query, err_msg)
+        inner_result = None
+        if err_msg is None:
+            if len(stat_query.keys()) > 0:
+                inner_result = self.db.query_stat(stat_query)
+                print(inner_result.shape[0])
+            card, group_df = self.db.query_text(inner_result, stat_query, text_query, raw_query)
+            print(card.shape[0], [df.shape[0] for df in group_df.values()])
+            print('--- %s ---' % ('기본 출력', ))
+            for idx, row in card.iterrows():
+                print(row['orig_name'], row['expansion'])
+            for key, df in group_df.items():
+                print('--- %s ---' % (key, ))
+                for idx, row in df.iterrows():
+                    print(row['orig_name'], row['expansion'])
+        return
         # self.process_bot_instruction({'text': '하스봇! 삭제 1'})
 
     def _read_help_file(self, fp):
@@ -163,8 +164,9 @@ class BotManager():
             stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
         elif card['type'] == '주문' or card['type'] == '영웅 교체':
             stat_text = '%d코스트' % (card['cost'],)
+        hero_text = '/'.join([hero_name for hero_name in hs_all_class_list if card['hero_%s'%hero_name] == 1])
         faction_text = '%s%s %s %s%s카드' % (('' if (not exact_match) else '- '),
-                                           card['expansion'], card['hero'], card['rarity'],
+                                           card['expansion'], hero_text, card['rarity'],
                                            (' ' if len(card['rarity']) > 0 else ''))
         stat_text = '%s %s%s%s' % (stat_text, card['race'], ' ' if len(card['race']) > 1 else '', card['type'])
         card_info = {
@@ -298,7 +300,8 @@ class BotManager():
                     stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
                 elif card['type'] == '주문' or card['type'] == '영웅 교체':
                     stat_text = '%d코스트' % (card['cost'], )
-                stat_text = '%s %s %s %s' % (card['hero'], card['rarity'], card['type'], stat_text)
+                hero_text = '/'.join([hero_name for hero_name in hs_all_class_list if card['hero_%s'%hero_name] == 1])
+                stat_text = '%s %s %s %s' % (hero_text, card['rarity'], card['type'], stat_text)
                 cur_text = '%s%s%s' %  (card['orig_name'], ' ' * (max_str_len + 5 - each_card_len[idx]),stat_text)
                 ret_text.append(cur_text)
 
