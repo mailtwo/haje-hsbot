@@ -226,7 +226,8 @@ def start_crawling(db_data, db_root):
         for k, v in card_data.items():
             card_list.append(k)
             card_names.append(v['name'] if 'name' in v else '')
-            img_list.append('https://www.hearthstudy.com/images/HD_koKR/koKR_%s.png' % (k, ))
+            #img_list.append('https://www.hearthstudy.com/images/HD_koKR/koKR_%s.png' % (k, ))
+            img_list.append('https://art.hearthstonejson.com/v1/render/latest/koKR/256x/%s.png' % (k, ))
 
     possible_data = []
     name_dict = {}
