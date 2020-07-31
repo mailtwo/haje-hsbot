@@ -64,7 +64,8 @@ hs_keywords = {
     '이중 주문': 'TWINSPELL',
     '사이드 퀘스트': 'SIDEQUEST',
     '기원': 'INVOKE',
-    '휴면': 'DORMANT'
+    '휴면': 'DORMANT',
+    '주문폭주': 'SPELLBURST'
 }
 
 class DBConnector(object):
@@ -210,6 +211,8 @@ class DBConnector(object):
                 lambda word: {'value': word}),
             (list(arena_expansion_group.keys()), 'arena_group',
              lambda word: {'value': word}),
+            (list(hs_keywords.keys()), 'keyword',
+                lambda word: {'value': word}),
             (list(self.type_alias.keys()), 'type',
                 lambda word: {
                     'value': self.type_alias[word]
@@ -219,8 +222,6 @@ class DBConnector(object):
                     'value': self.rarity_alias[word]
                 }),
             ([';'], 'end_stat',
-                lambda word: {'value': word}),
-            (list(hs_keywords.keys()), 'keyword',
                 lambda word: {'value': word}),
             (list(self.keyword_alias.keys()), 'keyword',
                 lambda word: {

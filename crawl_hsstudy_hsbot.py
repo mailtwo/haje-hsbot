@@ -147,7 +147,8 @@ translate_table = {
         'SIDEQUEST': '사이드 퀘스트',
         'INVOKE': '기원',
         'OUTCAST': '추방자',
-        'DORMANT': '휴면'
+        'DORMANT': '휴면',
+        'SPELLBURST': '주문폭주'
     }
 }
 keyword_keys = list(translate_table['keywords'].keys())
@@ -390,6 +391,8 @@ def start_crawling(db_data, db_root):
                 index_data['DORMANT'] = True
             if '*기원*' in card_info['text']:
                 index_data['INVOKE'] = True
+            if '*주문폭주:*' in card_info['text']:
+                index_data['SPELLBURST'] = True
             # if index_key in db_data[card_info['hero']]['index']:
             #     db_data[card_info['hero']]['index'][index_key].append(index_data)
             # else:
