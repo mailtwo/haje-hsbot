@@ -100,6 +100,7 @@ translate_table = {
         'PIRATE': '해적',
         'MECHANICAL': '기계',
         'ELEMENTAL': '정령',
+        'NIGHTELF': '나이트엘프',
         'ALL': '모두'
     },
     'keywords': {
