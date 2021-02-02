@@ -76,7 +76,8 @@ translate_table = {
         'DEMON_HUNTER_INITIATE': '수습',
         'BLACK_TEMPLE': '황폐한 아웃랜드',
         'BATTLEGROUNDS': '전장',
-        'SCHOLOMANCE': '스칼로맨스 아카데미'
+        'SCHOLOMANCE': '스칼로맨스 아카데미',
+        'DARKMOON_FAIRE': '광기의 다크문 축제'
     },
     'adventure': {
         'NAX': 'NAXA',
