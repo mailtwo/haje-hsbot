@@ -150,7 +150,8 @@ translate_table = {
         'INVOKE': '기원',
         'OUTCAST': '추방자',
         'DORMANT': '휴면',
-        'SPELLBURST': '주문폭주'
+        'SPELLBURST': '주문폭주',
+        'CORRUPT': '타락'
     }
 }
 keyword_keys = list(translate_table['keywords'].keys())
