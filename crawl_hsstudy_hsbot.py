@@ -39,7 +39,8 @@ translate_table = {
         'LEGENDARY': '전설'
     },
     'extension': {
-        'CORE': '기본',
+        'CORE': '핵심',
+        'LEGACY': '고전',
         'EXPERT1': '오리지널',
         'HOF': '명예의 전당',
         'TGT': '대 마상시합',
@@ -77,7 +78,9 @@ translate_table = {
         'BLACK_TEMPLE': '황폐한 아웃랜드',
         'BATTLEGROUNDS': '전장',
         'SCHOLOMANCE': '스칼로맨스 아카데미',
-        'DARKMOON_FAIRE': '광기의 다크문 축제'
+        'DARKMOON_FAIRE': '광기의 다크문 축제',
+        'THE_BARRENS': '불모의 땅',
+        'STORMWIND': '스톰윈드'
     },
     'adventure': {
         'NAX': 'NAXA',
@@ -102,7 +105,17 @@ translate_table = {
         'MECHANICAL': '기계',
         'ELEMENTAL': '정령',
         'NIGHTELF': '나이트엘프',
+        'QUILBOAR': '가시멧돼지',
         'ALL': '모두'
+    },
+    'spellSchool': {
+        'SHADOW': '암흑',
+        'HOLY': '신성',
+        'NATURE': '자연',
+        'ARCANE': '비전',
+        'FROST': '냉기',
+        'FIRE': '화염',
+        'FEL': '지옥'
     },
     'keywords': {
         'RECRUIT': '소집',
@@ -151,7 +164,9 @@ translate_table = {
         'OUTCAST': '추방자',
         'DORMANT': '휴면',
         'SPELLBURST': '주문폭주',
-        'CORRUPT': '타락'
+        'CORRUPT': '타락',
+        'FRENZY': '광폭',
+        'TRADEABLE': '교환성'
     }
 }
 keyword_keys = list(translate_table['keywords'].keys())
@@ -160,7 +175,7 @@ IGNORE_SET = ['HERO_SKINS', 'TB', 'CREDITS', 'MISSIONS', 'CHEAT', 'SLUSH', 1003,
 IGNORE_TYPE = ['GAME_MODE_BUTTON', 'MOVE_MINION_HOVER_TARGET']
 IGNORE_IMAGE = ['BATTLEGROUNDS']
 
-card_db_col = ['web_id','orig_name', 'name', 'eng_name', 'card_text', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
+card_db_col = ['web_id','orig_name', 'name', 'eng_name', 'card_text', 'type', 'cost', 'attack', 'health', 'race', 'spell_school', 'rarity', 'expansion', 'img_url', 'detail_url']
 card_db_col.extend(['hero_%s' % e for e in translate_table['hero'].values()])
 card_db_col += keyword_keys
 
@@ -168,7 +183,7 @@ force_run = True
 save_db = True
 
 def initial_db():
-    stat_value = ['None', 'None', 'None', 'None', 'None','None', 0, 0, 0, 'None', 'None', 'None','None', 'None']
+    stat_value = ['None', 'None', 'None', 'None', 'None','None', 0, 0, 0, 'None', 'None', 'None', 'None','None', 'None']
     for each_value in translate_table['hero'].values():
         stat_value.append(0)
     stat_value += [False for _ in range(len(keyword_keys))]
@@ -196,6 +211,23 @@ def main():
     else:
         print('DB is not saved!')
 
+def disambiguous_card(card_list):
+    new_card_list = []
+    for c_idx, c in enumerate(card_list):
+        if 'collectible' not in c or not c['collectible']:
+            continue
+        new_card_list.append(c)
+    if len(new_card_list) <= 1:
+        return new_card_list
+
+    prev_card_list = new_card_list[:]
+    new_card_list = []
+    for c_idx, c in enumerate(prev_card_list):
+        if 'set' in c and c['set'] == 'CORE':
+            new_card_list.append(c)
+    if len(new_card_list) <= 1:
+        return new_card_list
+    return None
 
 def start_crawling(db_data, db_root):
     target_expansion = []
@@ -271,6 +303,10 @@ def start_crawling(db_data, db_root):
                 additional_info[cur_card_id]['text'] = []
             additional_info[cur_card_id]['text'].append(('\n' + str(card_info['text'])))
             continue
+        if card_info['id'].startswith('VAN_'):
+            continue
+        if card_info['id'].startswith('Story_'):
+            continue
 
         if '_BOSS_' in card_info['id']:
             continue
@@ -281,7 +317,7 @@ def start_crawling(db_data, db_root):
             card_info['set'] = 'HOF'
 
         for adv_key in translate_table['adventure'].keys():
-            if card_info['id'][:len(adv_key)] == adv_key:
+            if card_info['id'].startswith(adv_key):
                 card_info['set'] = translate_table['adventure'][adv_key]
 
         if card_info['name'] not in name_dict.keys():
@@ -315,7 +351,11 @@ def start_crawling(db_data, db_root):
             elif count_collectible == 1:
                 card_info_list.append(v[saved_c_idx])
             else:
-                assert False
+                v_new = disambiguous_card(v)
+                if v_new is None or len(v_new) == 0:
+                    print('Card %s is detected %d times'%(k, count_collectible))
+                    assert False
+                card_info_list.append(v_new[0])
         else:
             card_info_list.append(v[0])
 
@@ -359,6 +399,7 @@ def start_crawling(db_data, db_root):
                             'rarity': translate_table['rarity'][card_info['rarity']] if 'rarity' in card_info else '',
                             'expansion': translate_table['extension'][card_info['set']],
                             'race': translate_table['race'][card_info['race']] if 'race' in card_info else '',
+                            'spell_school': translate_table['spellSchool'][card_info['spellSchool']] if 'spellSchool' in card_info else '',
                             'img_url': card_info['img_url'],
                             'detail_url': detail_url,
             }

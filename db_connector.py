@@ -10,11 +10,12 @@ alias_db_col = ['web_id', 'alias']
 #                '전투의 함성', '전투의 함성:', '죽음의 메아리', '죽음의 메아리:', '면역', '선택 -', '선택', '연계', '연계:'
 #                '과부하', '비밀', '비밀:', '예비 부품', '격려', '격려:', '창시합', '발견', '비취 골렘', '적응', '퀘스트',
 #                '퀘스트:', '보상', '보상:', '생명력 흡수', '소집', '개전', '속공', '잔상']
-hs_races = ['멀록', '악마', '야수', '용족', '토템', '해적', '기계', '정령', '나이트엘프', '모두']
+hs_races = ['멀록', '악마', '야수', '용족', '토템', '해적', '기계', '정령', '나이트엘프', '가시멧돼지', '모두']
+hs_spell_schools = ['암흑','신성','자연','비전','냉기','화염','지옥']
 hs_expansion_group = {
     '정확': [],
-    '정규': ['어둠의 반격', '울둠의 구원자', '용의 강림', '수습', '황폐한 아웃랜드', '스칼로맨스 아카데미', '다크문 축제', '오리지널', '기본'],
-    '야생': ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹', '가젯잔', '카라잔', '고대 신', '운고로', '코볼트', '얼어붙은 왕좌', '마녀숲', '폭심만만', '라스타칸의 대난투'],
+    '정규': ['수습', '황폐한 아웃랜드', '스칼로맨스 아카데미', '다크문 축제', '불모의 땅', '스톰윈드', '핵심', '오리지널', '기본'],
+    '야생': ['대 마상시합', '명예의 전당', '낙스라마스', '고블린 대 노움', '검은바위 산', '탐험가 연맹', '가젯잔', '카라잔', '고대 신', '운고로', '코볼트', '얼어붙은 왕좌', '마녀숲', '폭심만만', '라스타칸의 대난투', '어둠의 반격', '울둠의 구원자', '용의 강림'],
     '모험모드': ['낙스라마스 모험모드', '검은바위 산 모험모드', '탐험가 연맹 모험모드', '카라잔 모험모드', '얼어붙은 왕좌 모험모드', '코볼트 모험모드', '마녀숲 모험모드', '시간의 선술집', '라스타칸의 대난투 모험모드', '어둠의 반격 모험모드', '울둠의 구원자 모험모드', '용의 강림 모험모드']
 }
 arena_expansion_group = {
@@ -69,7 +70,9 @@ hs_keywords = {
     '기원': 'INVOKE',
     '휴면': 'DORMANT',
     '주문폭주': 'SPELLBURST',
-    '타락': 'CORRUPT'
+    '타락': 'CORRUPT',
+    '광폭': 'FRENZY',
+    '교환성': 'TRADEABLE'
 }
 
 class DBConnector(object):
@@ -139,7 +142,7 @@ class DBConnector(object):
                               '죽메:': '죽음의 메아리:',
                               '선택-': '선택 -',
                               '선택:': '선택 -'}
-        self.card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'type', 'cost', 'attack', 'health', 'race', 'rarity', 'expansion', 'img_url', 'detail_url']
+        self.card_db_col = ['web_id', 'name', 'eng_name', 'card_text', 'type', 'cost', 'attack', 'health', 'race', 'spell_school', 'rarity', 'expansion', 'img_url', 'detail_url']
         self.card_db_col.extend(['hero_%s'%each_class for each_class in hs_all_class_list])
         self.card_db_col += list(hs_keywords.values())
         self.new_expansion_name = None
@@ -212,6 +215,8 @@ class DBConnector(object):
                 }),
             (hs_races, 'race',
                 lambda word: {'value': word}),
+            (hs_spell_schools, 'spell_school',
+                lambda word: {'value': word}),
             (list(hs_expansion_group.keys()), 'expansion_group',
                 lambda word: {'value': word}),
             (list(arena_expansion_group.keys()), 'arena_group',
@@ -261,6 +266,7 @@ class DBConnector(object):
             'attack': 0,
             'health': 0,
             'race': '',
+            'spell_school': '',
             'rarity': '일반',
             'expansion': self.new_expansion_name,
             'mechanics': [],
@@ -400,6 +406,17 @@ class DBConnector(object):
                 stat_query['race'].append({'value': '모두', 'neg': False, 'op': 'eq'})
             else:
                 stat_query['race'].append({'value': '모두', 'neg': True, 'op': 'eq'})
+
+        # if ('spell_school' in stat_query):
+        #     pos_inc = False
+        #     for q in stat_query['spell_school']:
+        #         if q['neg'] == False:
+        #             pos_inc = True
+        #             break
+        #     if pos_inc:
+        #         stat_query['spell_school'].append({'value': '모두', 'neg': False, 'op': 'eq'})
+        #     else:
+        #         stat_query['spell_school'].append({'value': '모두', 'neg': True, 'op': 'eq'})
 
         for k, t_list in stat_query.items():
             pos_inc = False

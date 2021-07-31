@@ -93,30 +93,30 @@ class BotManager():
             except:
                 os.remove(self.file_db_path)
 
-        card_info, err = crawl_card_data('power-word-replicate')
-        if err:
-            print(card_info)
-        else:
-            self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path, postprocess=False)
+        # card_info, err = crawl_card_data('power-word-replicate')
+        # if err:
+        #     print(card_info)
+        # else:
+        #     self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path, postprocess=False)
             #self.send_message('성공적으로 등록되었습니다.', user_id)
-        user_query = '크툰'
-        stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
-        print (stat_query, text_query, err_msg)
-        inner_result = None
-        if err_msg is None:
-            if len(stat_query.keys()) > 0:
-                inner_result = self.db.query_stat(stat_query)
-                print(inner_result.shape[0])
-            card, group_df = self.db.query_text(inner_result, stat_query, text_query, raw_query)
-            print(card.shape[0], [df.shape[0] for df in group_df.values()])
-            print('--- %s ---' % ('기본 출력', ))
-            for idx, row in card.iterrows():
-                print(row['orig_name'], row['expansion'])
-            for key, df in group_df.items():
-                print('--- %s ---' % (key, ))
-                for idx, row in df.iterrows():
-                    print(row['orig_name'], row['expansion'])
-        return
+        # user_query = '마법사 화염'
+        # stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
+        # print (stat_query, text_query, err_msg)
+        # inner_result = None
+        # if err_msg is None:
+        #     if len(stat_query.keys()) > 0:
+        #         inner_result = self.db.query_stat(stat_query)
+        #         print(inner_result.shape[0])
+        #     card, group_df = self.db.query_text(inner_result, stat_query, text_query, raw_query)
+        #     print(card.shape[0], [df.shape[0] for df in group_df.values()])
+        #     print('--- %s ---' % ('기본 출력', ))
+        #     for idx, row in card.iterrows():
+        #         print(row['orig_name'], row['expansion'])
+        #     for key, df in group_df.items():
+        #         print('--- %s ---' % (key, ))
+        #         for idx, row in df.iterrows():
+        #             print(row['orig_name'], row['expansion'])
+        # return
         # self.process_bot_instruction({'text': '하스봇! 삭제 1'})
 
     def _read_help_file(self, fp):
@@ -408,10 +408,10 @@ class BotManager():
                     f.write(ret_text)
                     f.write(traceback.format_exc())
                     f.flush()
-                msg_pair = MsgPair('simple_txt', ret_text)
-                self.send_msg_pair(msg_pair)
-                if self.mode == 'debug':
-                    raise e
+                # msg_pair = MsgPair('simple_txt', ret_text)
+                # self.send_msg_pair(msg_pair)
+                # if self.mode == 'debug':
+                #     raise e
 
             for i in range(int(sleep_time / 2)):
                 if data_info['stop']:
