@@ -166,7 +166,8 @@ translate_table = {
         'SPELLBURST': '주문폭주',
         'CORRUPT': '타락',
         'FRENZY': '광폭',
-        'TRADEABLE': '교환성'
+        'TRADEABLE': '교환성',
+        'MULTIQUEST': '퀘스트 전개'
     }
 }
 keyword_keys = list(translate_table['keywords'].keys())
@@ -437,6 +438,8 @@ def start_crawling(db_data, db_root):
                 index_data['INVOKE'] = True
             if '*주문폭주:*' in card_info['text']:
                 index_data['SPELLBURST'] = True
+            if '*퀘스트 전개:*' in card_info['text']:
+                index_data['MULTIQUEST'] = True
             # if index_key in db_data[card_info['hero']]['index']:
             #     db_data[card_info['hero']]['index'][index_key].append(index_data)
             # else:

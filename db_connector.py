@@ -72,7 +72,8 @@ hs_keywords = {
     '주문폭주': 'SPELLBURST',
     '타락': 'CORRUPT',
     '광폭': 'FRENZY',
-    '교환성': 'TRADEABLE'
+    '교환성': 'TRADEABLE',
+    '퀘스트 전개': 'MULTIQUEST'
 }
 
 class DBConnector(object):
