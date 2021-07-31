@@ -159,7 +159,7 @@ translate_table = {
         'OVERKILL': '압살',
         'REBORN': '환생',
         'TWINSPELL': '이중 주문',
-        'SIDEQUEST': '사이드 퀘스트',
+        'SIDEQUEST': '부가 퀘스트',
         'INVOKE': '기원',
         'OUTCAST': '추방자',
         'DORMANT': '휴면',

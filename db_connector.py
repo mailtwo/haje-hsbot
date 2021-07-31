@@ -66,7 +66,7 @@ hs_keywords = {
     '압살': 'OVERKILL',
     '환생': 'REBORN',
     '이중 주문': 'TWINSPELL',
-    '사이드 퀘스트': 'SIDEQUEST',
+    '부가 퀘스트': 'SIDEQUEST',
     '기원': 'INVOKE',
     '휴면': 'DORMANT',
     '주문폭주': 'SPELLBURST',
