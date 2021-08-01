@@ -164,7 +164,8 @@ class BotManager():
     def process_single_card(self, card, exact_match):
         stat_text = ''
         if card['expansion'] == '전장':
-            stat_text = '%d성 %d/%d' % (card['cost'], card['attack'], card['health'])
+            if card['type'] == '하수인' or card['type'] == '무기':
+                stat_text = '%d성 %d/%d' % (card['cost'], card['attack'], card['health'])
             faction_text = '%s%s %s%s카드' % (('' if (not exact_match) else '- '),
                                                card['expansion'],
                                                card['race'],
@@ -308,7 +309,10 @@ class BotManager():
                 card = cards.iloc[idx]
                 stat_text = ''
                 if card['expansion'] == '전장':
-                    stat_text = '%d성 %s%s%s %d/%d' % (card['cost'], card['race'],' ' if len(card['race']) > 1 else '', card['type'], card['attack'], card['health'])
+                    if card['type'] == '하수인' or card['type'] == '무기':
+                        stat_text = '%d성 %s%s%s %d/%d' % (card['cost'], card['race'],' ' if len(card['race']) > 1 else '', card['type'], card['attack'], card['health'])
+                    else:
+                        stat_text = '%s' % (card['type'])
                 else:
                     if card['type'] == '하수인' or card['type'] == '무기':
                         stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
