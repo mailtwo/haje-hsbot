@@ -11,7 +11,7 @@ alias_db_col = ['web_id', 'alias']
 #                '과부하', '비밀', '비밀:', '예비 부품', '격려', '격려:', '창시합', '발견', '비취 골렘', '적응', '퀘스트',
 #                '퀘스트:', '보상', '보상:', '생명력 흡수', '소집', '개전', '속공', '잔상']
 hs_races = ['멀록', '악마', '야수', '용족', '토템', '해적', '기계', '정령', '나이트엘프', '가시멧돼지', '모두']
-hs_spell_schools = ['암흑','신성','자연','비전','냉기','화염','지옥']
+hs_spell_schools = ['암흑', '신성', '자연', '비전', '냉기', '화염', '지옥']
 hs_expansion_group = {
     '정확': [],
     '정규': ['수습', '황폐한 아웃랜드', '스칼로맨스 아카데미', '다크문 축제', '불모의 땅', '스톰윈드', '핵심', '오리지널', '기본'],
@@ -173,6 +173,11 @@ class DBConnector(object):
                 lambda word: {'value': self.hero_alias[word]}
              ),
             ('([0-9]+)([-+])?코(스트)?', 'cost',
+                lambda re_obj: {
+                    'value': int(re_obj.group(1)),
+                    'op': 'eq' if re_obj.group(2) is None else re_obj.group(2)
+                }),
+            ('([0-9]+)([-+])?성', 'battlegrounds_cost',
                 lambda re_obj: {
                     'value': int(re_obj.group(1)),
                     'op': 'eq' if re_obj.group(2) is None else re_obj.group(2)
@@ -407,6 +412,12 @@ class DBConnector(object):
                 stat_query['race'].append({'value': '모두', 'neg': False, 'op': 'eq'})
             else:
                 stat_query['race'].append({'value': '모두', 'neg': True, 'op': 'eq'})
+
+        if 'battlegrounds_cost' in stat_query:
+            stat_query['expansion'] = [{'type': 'expansion', 'value': '전장', 'neg': False}]
+            stat_query['type'] = [{'type': 'type', 'value': '하수인', 'neg': False}]
+            stat_query['cost'] = stat_query['battlegrounds_cost']
+            del stat_query['battlegrounds_cost']
 
         # if ('spell_school' in stat_query):
         #     pos_inc = False

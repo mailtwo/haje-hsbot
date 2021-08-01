@@ -174,7 +174,7 @@ keyword_keys = list(translate_table['keywords'].keys())
 ref_keywords_key = ['RECRUIT', 'JADE_GOLEM', 'IMMUNE', 'FREEZE', 'COUNTER', 'DISCOVER','ADAPT']
 IGNORE_SET = ['HERO_SKINS', 'TB', 'CREDITS', 'MISSIONS', 'CHEAT', 'SLUSH', 1003, 'WILD_EVENT']
 IGNORE_TYPE = ['GAME_MODE_BUTTON', 'MOVE_MINION_HOVER_TARGET']
-IGNORE_IMAGE = ['BATTLEGROUNDS']
+IGNORE_IMAGE = []
 
 card_db_col = ['web_id','orig_name', 'name', 'eng_name', 'card_text', 'type', 'cost', 'attack', 'health', 'race', 'spell_school', 'rarity', 'expansion', 'img_url', 'detail_url']
 card_db_col.extend(['hero_%s' % e for e in translate_table['hero'].values()])
@@ -304,6 +304,8 @@ def start_crawling(db_data, db_root):
                 additional_info[cur_card_id]['text'] = []
             additional_info[cur_card_id]['text'].append(('\n' + str(card_info['text'])))
             continue
+        if card_info['name'].endswith('[DNT]'):
+            continue
         if card_info['id'].startswith('VAN_'):
             continue
         if card_info['id'].startswith('Story_'):
@@ -370,7 +372,6 @@ def start_crawling(db_data, db_root):
             is_proceed = bool(ret.empty)
         if is_proceed:# or ret.iloc[0]['type'] == '무기':
             detail_url = info_url + str(card_id)
-            #card_info, err = retrieve_card_information(detail_url, card_id, card_name)
             card_info = card_data[card_id]
 
             # if 'set' not in card_info:
@@ -387,6 +388,10 @@ def start_crawling(db_data, db_root):
                 if 'text' in additional_info[card_info['id']]:
                     for elem in additional_info[card_info['id']]['text']:
                         card_text += elem
+            # cost value is techLevel if the card's set is BATTLEGROUNDS
+            cost = card_info['cost'] if 'cost' in card_info else 0
+            if 'set'in card_info and 'techLevel' in card_info and card_info['set'] == 'BATTLEGROUNDS':
+                cost = card_info['techLevel']
             index_data = {  'web_id': card_info['id'],
                             'orig_name': card_info['name'],
                             'name': preprocess_name(card_info['name']),
@@ -394,7 +399,7 @@ def start_crawling(db_data, db_root):
                             'card_text': card_text,
                             # 'hero': hero_info,
                             'type': translate_table['type'][card_info['type']],
-                            'cost': card_info['cost'] if 'cost' in card_info else 0,
+                            'cost': cost,
                             'attack': card_info['attack'] if 'attack' in card_info else 0,
                             'health': card_info['health'] if 'health' in card_info else (card_info['durability'] if 'durability' in card_info else 0),
                             'rarity': translate_table['rarity'][card_info['rarity']] if 'rarity' in card_info else '',
@@ -483,121 +488,6 @@ def retrieve_card_idx(driver, target_url):
         card_imgs.append(card.attrs['data-src'])
 
     return card_ids, card_names, card_imgs
-
-
-def retrieve_card_information(target_url, card_id, card_name):
-    print (target_url)
-    card_info = {
-        'hero': 'druid',
-        'id': card_id,
-        'cost': 0,
-        'attack': 0,
-        'health': 0,
-        'img_url': '',
-        'name': card_name,
-        'eng_name': '',
-        'expansion': '오리지날',
-        'type': '',
-        'race': '',
-        'rarity': '',
-        'card_text': ''
-    }
-    is_err = False
-
-    count = 0
-    while(True):
-        try:
-            url_file = urllib.request.urlopen(target_url)
-            break
-        except:
-            if count == 3:
-                return ('URL을 열 수 없습니다 - %s' % target_url), True
-            time.sleep(5)
-
-    inner_html = url_file.read().decode('utf8')
-    url_file.close()
-    inner_souop = None
-    try:
-        inner_soup = BeautifulSoup(inner_html, 'lxml')
-    except:
-        return ('BeautifulSoup에서 해석할 수 없습니다.'), True
-    card_info['img_url'] = 'None'
-
-    try:
-        for elem in inner_soup.find_all('p', {'class': 'description'}):
-            if elem.text != 'Related Contents':
-                card_info['eng_name'] = elem.text
-    except:
-        return ('description class를 찾을 수 없습니다.'), True
-
-    try:
-        title_div = inner_soup.find('section', {'class': 'bg-white'})
-        title_div = title_div.find('div', {'class': 'title'})
-        name = title_div.find('h2').text
-        eng_name = title_div.find('p').text
-    except:
-        return ('name, eng_name을 찾을 수 없습니다.', True)
-    card_info['name'] = name
-    card_info['eng_name'] = eng_name
-
-
-    try:
-        detail_table = inner_soup.find('div', {'class': 'panel panel-default'})
-        card_info['hero'] = detail_table.find('div', {'class': 'panel-heading'}).find('a').text
-        info_list = detail_table.find_all('div', {'class': 'panel-body'})
-        for info_data in info_list:
-            if info_data.find('a') is not None:
-                ahref = info_data.find('a')
-                href_url = ahref.attrs['href']
-                value = ahref.text
-                if 'rarity' in href_url:
-                    card_info['rarity'] = value
-                elif 'type' in href_url:
-                    card_info['type'] = value
-                elif 'race' in href_url:
-                    card_info['race'] = value
-                elif 'category' in href_url:
-                    card_info['expansion'] = value
-            else:
-                img_list = info_data.find_all('img')
-                stat_list = info_data.find_all('h3')
-                stat_idx = 0
-                for img in img_list:
-                    stat = stat_list[stat_idx]
-                    while len(stat.text) == 0:
-                        stat_idx += 1
-                        stat = stat_list[stat_idx]
-                    img_src = img.attrs['src']
-                    if 'mana' in img_src:
-                        card_info['cost'] = int(stat.text)
-                    elif 'attack' in img_src or 'WEAPON' in img_src:
-                        card_info['attack'] = int(stat.text)
-                    elif 'MINION' in img_src or 'health_weapon' in img_src:
-                        card_info['health'] = int(stat.text)
-                    stat_idx += 1
-    except:
-        return ('카드 속성을 찾을 수 없습니다.', True)
-
-    try:
-        bs_callout = detail_table.parent.find('div', {'class':'bs-callout'})
-        if bs_callout is not None:
-            card_text_elem = bs_callout.find('p')
-            card_info['card_text'] = str(card_text_elem)
-    except:
-        return '카드 효과를 찾을 수 없습니다.', True
-
-    return card_info, is_err
-
-def download_img(target_url, save_path):
-    is_err = False
-    try:
-        if not os.path.exists(save_path):
-            urllib.request.urlretrieve(target_url, save_path)
-    except:
-        print('Fail to download url %s to %s'%(target_url, save_path))
-        is_err = True
-    return is_err
-
 
 if __name__ == '__main__':
     main()

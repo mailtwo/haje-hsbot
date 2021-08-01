@@ -13,7 +13,7 @@ import datetime
 import slack
 from db_connector import DBConnector
 from db_connector import hs_expansion_priority
-from crawl_hsstudy_page import crawl_card_data
+# from crawl_hsstudy_page import crawl_card_data
 
 # import logging
 # root = logging.getLogger('slack.rtm.client')
@@ -99,24 +99,24 @@ class BotManager():
         # else:
         #     self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path, postprocess=False)
             #self.send_message('성공적으로 등록되었습니다.', user_id)
-        # user_query = '성기사 부가 퀘스트'
-        # stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
-        # print (stat_query, text_query, err_msg)
-        # inner_result = None
-        # if err_msg is None:
-        #     if len(stat_query.keys()) > 0:
-        #         inner_result = self.db.query_stat(stat_query)
-        #         print(inner_result.shape[0])
-        #     card, group_df = self.db.query_text(inner_result, stat_query, text_query, raw_query)
-        #     print(card.shape[0], [df.shape[0] for df in group_df.values()])
-        #     print('--- %s ---' % ('기본 출력', ))
-        #     for idx, row in card.iterrows():
-        #         print(row['orig_name'], row['expansion'])
-        #     for key, df in group_df.items():
-        #         print('--- %s ---' % (key, ))
-        #         for idx, row in df.iterrows():
-        #             print(row['orig_name'], row['expansion'])
-        # return
+        user_query = '1성 하수인'
+        stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
+        print (stat_query, text_query, err_msg)
+        inner_result = None
+        if err_msg is None:
+            if len(stat_query.keys()) > 0:
+                inner_result = self.db.query_stat(stat_query)
+                print(inner_result.shape[0])
+            card, group_df = self.db.query_text(inner_result, stat_query, text_query, raw_query)
+            print(card.shape[0], [df.shape[0] for df in group_df.values()])
+            print('--- %s ---' % ('기본 출력', ))
+            for idx, row in card.iterrows():
+                print(row['orig_name'], row['expansion'])
+            for key, df in group_df.items():
+                print('--- %s ---' % (key, ))
+                for idx, row in df.iterrows():
+                    print(row['orig_name'], row['expansion'])
+        return
         # self.process_bot_instruction({'text': '하스봇! 삭제 1'})
 
     def _read_help_file(self, fp):
@@ -163,15 +163,23 @@ class BotManager():
 
     def process_single_card(self, card, exact_match):
         stat_text = ''
-        if card['type'] == '하수인' or card['type'] == '무기':
-            stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
-        elif card['type'] == '주문' or card['type'] == '영웅 교체':
-            stat_text = '%d코스트' % (card['cost'],)
-        hero_text = '/'.join([hero_name for hero_name in hs_all_class_list if card['hero_%s'%hero_name] == 1])
-        faction_text = '%s%s %s %s%s카드' % (('' if (not exact_match) else '- '),
-                                           card['expansion'], hero_text, card['rarity'],
-                                           (' ' if len(card['rarity']) > 0 else ''))
-        stat_text = '%s %s%s%s' % (stat_text, card['race'], ' ' if len(card['race']) > 1 else '', card['type'])
+        if card['expansion'] == '전장':
+            stat_text = '%d성 %d/%d' % (card['cost'], card['attack'], card['health'])
+            faction_text = '%s%s %s%s카드' % (('' if (not exact_match) else '- '),
+                                               card['expansion'],
+                                               card['race'],
+                                               ' ' if len(card['race']) > 1 else '')
+            stat_text = '%s %s' % (stat_text, card['type'])
+        else:
+            if card['type'] == '하수인' or card['type'] == '무기':
+                stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
+            elif card['type'] == '주문' or card['type'] == '영웅 교체':
+                stat_text = '%d코스트' % (card['cost'],)
+            hero_text = '/'.join([hero_name for hero_name in hs_all_class_list if card['hero_%s'%hero_name] == 1])
+            faction_text = '%s%s %s %s%s카드' % (('' if (not exact_match) else '- '),
+                                               card['expansion'], hero_text, card['rarity'],
+                                               (' ' if len(card['rarity']) > 0 else ''))
+            stat_text = '%s %s%s%s' % (stat_text, card['race'], ' ' if len(card['race']) > 1 else '', card['type'])
         card_info = {
             'author_name': faction_text + '\n' + stat_text,
             'title': card['orig_name'],
@@ -299,12 +307,15 @@ class BotManager():
             for idx in range(cards.shape[0]):
                 card = cards.iloc[idx]
                 stat_text = ''
-                if card['type'] == '하수인' or card['type'] == '무기':
-                    stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
-                elif card['type'] == '주문' or card['type'] == '영웅 교체':
-                    stat_text = '%d코스트' % (card['cost'], )
-                hero_text = '/'.join([hero_name for hero_name in hs_all_class_list if card['hero_%s'%hero_name] == 1])
-                stat_text = '%s %s %s %s' % (hero_text, card['rarity'], card['type'], stat_text)
+                if card['expansion'] == '전장':
+                    stat_text = '%d성 %s%s%s %d/%d' % (card['cost'], card['race'],' ' if len(card['race']) > 1 else '', card['type'], card['attack'], card['health'])
+                else:
+                    if card['type'] == '하수인' or card['type'] == '무기':
+                        stat_text = '%d코스트 %d/%d' % (card['cost'], card['attack'], card['health'])
+                    elif card['type'] == '주문' or card['type'] == '영웅 교체':
+                        stat_text = '%d코스트' % (card['cost'], )
+                    hero_text = '/'.join([hero_name for hero_name in hs_all_class_list if card['hero_%s'%hero_name] == 1])
+                    stat_text = '%s %s %s %s' % (hero_text, card['rarity'], card['type'], stat_text)
                 cur_text = '%s%s%s' %  (card['orig_name'], ' ' * (max_str_len + 5 - each_card_len[idx]),stat_text)
                 ret_text.append(cur_text)
 
@@ -708,13 +719,14 @@ class BotManager():
             self.send_message('카드 정보를 입력해주세요.\n' + table_col, user_id)
         else:
             if arg_list[1] == '하스스터디':
+                pass
                 # self.send_message(str(arg_list), user_id)
-                card_info, err = crawl_card_data(arg_list[2])
-                if err:
-                    self.send_message(card_info, user_id)
-                else:
-                    self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path, postprocess=False)
-                    self.send_message('성공적으로 등록되었습니다.', user_id)
+                # card_info, err = crawl_card_data(arg_list[2])
+                # if err:
+                #     self.send_message(card_info, user_id)
+                # else:
+                #     self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path, postprocess=False)
+                #     self.send_message('성공적으로 등록되었습니다.', user_id)
             else:
                 card_json = ' '.join(arg_list[1:])
                 card_info = None
