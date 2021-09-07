@@ -19,9 +19,12 @@ def main():
         file_id = row['file_id']
         if file_id == 'None':
             continue
-        result = wc.files_delete(
-            file=file_db.loc[row.name]['file_id']
-        )
+        try:
+            result = wc.files_delete(
+                file=file_db.loc[row.name]['file_id']
+            )
+        except Exception as e:
+            pass
 
 if __name__ == '__main__':
     main()

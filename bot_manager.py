@@ -99,24 +99,24 @@ class BotManager():
         # else:
         #     self.db.add_card_to_db(card_info, update_pd_path=self.new_cards_path, postprocess=False)
             #self.send_message('성공적으로 등록되었습니다.', user_id)
-        user_query = '1성 하수인'
-        stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
-        print (stat_query, text_query, err_msg)
-        inner_result = None
-        if err_msg is None:
-            if len(stat_query.keys()) > 0:
-                inner_result = self.db.query_stat(stat_query)
-                print(inner_result.shape[0])
-            card, group_df = self.db.query_text(inner_result, stat_query, text_query, raw_query)
-            print(card.shape[0], [df.shape[0] for df in group_df.values()])
-            print('--- %s ---' % ('기본 출력', ))
-            for idx, row in card.iterrows():
-                print(row['orig_name'], row['expansion'])
-            for key, df in group_df.items():
-                print('--- %s ---' % (key, ))
-                for idx, row in df.iterrows():
-                    print(row['orig_name'], row['expansion'])
-        return
+        # user_query = '1성 하수인'
+        # stat_query, text_query, raw_query, err_msg = self.db.parse_user_request(user_query)
+        # print (stat_query, text_query, err_msg)
+        # inner_result = None
+        # if err_msg is None:
+        #     if len(stat_query.keys()) > 0:
+        #         inner_result = self.db.query_stat(stat_query)
+        #         print(inner_result.shape[0])
+        #     card, group_df = self.db.query_text(inner_result, stat_query, text_query, raw_query)
+        #     print(card.shape[0], [df.shape[0] for df in group_df.values()])
+        #     print('--- %s ---' % ('기본 출력', ))
+        #     for idx, row in card.iterrows():
+        #         print(row['orig_name'], row['expansion'])
+        #     for key, df in group_df.items():
+        #         print('--- %s ---' % (key, ))
+        #         for idx, row in df.iterrows():
+        #             print(row['orig_name'], row['expansion'])
+        # return
         # self.process_bot_instruction({'text': '하스봇! 삭제 1'})
 
     def _read_help_file(self, fp):

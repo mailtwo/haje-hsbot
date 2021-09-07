@@ -167,7 +167,8 @@ translate_table = {
         'CORRUPT': '타락',
         'FRENZY': '광폭',
         'TRADEABLE': '교환성',
-        'MULTIQUEST': '퀘스트 전개'
+        'MULTIQUEST': '퀘스트 전개',
+        'AVENGE': '복수'
     }
 }
 keyword_keys = list(translate_table['keywords'].keys())

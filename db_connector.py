@@ -73,7 +73,8 @@ hs_keywords = {
     '타락': 'CORRUPT',
     '광폭': 'FRENZY',
     '교환성': 'TRADEABLE',
-    '퀘스트 전개': 'MULTIQUEST'
+    '퀘스트 전개': 'MULTIQUEST',
+    '복수': 'AVENGE'
 }
 
 class DBConnector(object):
